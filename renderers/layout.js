@@ -129,6 +129,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         height: ${element.height}px;
         z-index: ${element.zIndex};
         rotate: ${element.rotation}deg;
+        transform-origin: top left; 
         border: 1px solid black;
       ">
         ${element.html}
