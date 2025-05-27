@@ -1,5 +1,6 @@
 import { convertImgJsonToHtml } from "./image.js";
 import { convertLogoJsonToHtml } from "./logo.js";
+import { textJsonToHtml } from "./new/text.js";
 import {
   convertLineJsonToHtml,
   convertShapeJsonToHtml,
@@ -62,7 +63,28 @@ async function convertChildrenToHtml(children) {
       height,
     };
 
-    let html = "<div></div>";
+    let html = `<div></div>`;
+
+    if (type === "text") {
+      html = textJsonToHtml(child);
+    } else {
+      switch (elementType) {
+        case "logo":
+          break;
+        case "line_outline":
+        case "line":
+          break;
+        case "star_rating":
+          break;
+        case "graphicShape":
+        case "complex_svg":
+          break;
+        case "image":
+        case "svg":
+          break;
+        default:
+      }
+    }
 
     // if (type === "text") {
     //   html = convertTextJsonToHtml(child, rootCoordinates);
@@ -131,6 +153,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         rotate: ${element.rotation}deg;
         transform-origin: top left; 
         border: 1px solid black;
+        display: flex;
       ">
         ${element.html}
       </div>

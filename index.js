@@ -18,7 +18,7 @@ async function generateHTML(apiUrl, options = {}) {
       page: jsonData.data[0],
     });
 
-    console.log("Layout created", layoutHtml);
+    console.log("Layout created");
 
     return layoutHtml;
   } catch (error) {
@@ -72,4 +72,4 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   main("75d59d9d18de4e30b8f8ab847c95cf6a");
 }
 
-main("32412ecf18054959b1aea9bcd6798861");
+main("481a31250e8848cb91d29c96f0779085");
