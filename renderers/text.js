@@ -30,6 +30,8 @@ class FontStyleGenerator extends StyleGenerator {
     } = this.props;
 
     const mappingFontFamily = (elementType) => {
+      console.log("Mapping font family for element type:", elementType);
+      console.log("Styling JSON:", this.json);
       let typeStyle;
       switch (elementType) {
         case "headline":
@@ -43,7 +45,9 @@ class FontStyleGenerator extends StyleGenerator {
           );
           break;
         case "body":
-          typeStyle = styling.find((item) => item.style === "BodyCopy");
+          typeStyle = this.json.styling.find(
+            (item) => item.style === "BodyCopy"
+          );
           break;
         default:
           return {

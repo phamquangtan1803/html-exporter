@@ -1,6 +1,7 @@
 import axios from "axios";
-import { genreateLayoutHtml } from "./renderers/layout.js";
+import { generateLayoutHtml } from "./renderers/layout.js";
 import fs from "fs";
+import util from "util";
 
 async function generateHTML(apiUrl, options = {}) {
   try {
@@ -8,10 +9,16 @@ async function generateHTML(apiUrl, options = {}) {
 
     const jsonData = await fetchAPIData(apiUrl);
 
-    const layoutHtml = await genreateLayoutHtml({
-      page: jsonData.data,
+    console.log(
+      "Data fetched from API:",
+      util.inspect(jsonData, false, null, true)
+    );
+
+    const layoutHtml = await generateLayoutHtml({
+      page: jsonData.data[0],
     });
-    console.log("Data fetched successfully:", jsonData);
+
+    console.log("Layout created", layoutHtml);
 
     return layoutHtml;
   } catch (error) {
@@ -51,8 +58,8 @@ async function main(templateSizeId = "a62fdc60b03e4587abe23f0db23cebba") {
     const apiUrl = `https://stg-api.obello.com/template-service/animations/list?template_size_id=${templateSizeId}`;
 
     const data = await generateHTML(apiUrl);
-
-    fs.writeFileSync("output.html", data, "utf8");
+    console.log(process.cwd() + "\\output.html");
+    fs.writeFileSync(process.cwd() + "\\output.html", data, "utf8");
     console.log("Data written to output.html");
   } catch (error) {
     console.error("Error in main:", error.message);
@@ -62,5 +69,7 @@ async function main(templateSizeId = "a62fdc60b03e4587abe23f0db23cebba") {
 export { generateHTML, fetchAPIData };
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
-  main();
+  main("75d59d9d18de4e30b8f8ab847c95cf6a");
 }
+
+main("32412ecf18054959b1aea9bcd6798861");

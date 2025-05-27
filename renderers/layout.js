@@ -42,6 +42,8 @@ function getResetCSS() {
 async function convertChildrenToHtml(children) {
   const htmlElements = [];
 
+  console.log("Converting children to HTML...", children);
+
   const promises = children.map(async (child) => {
     const {
       elementType,
@@ -50,6 +52,7 @@ async function convertChildrenToHtml(children) {
       y = 0,
       width = 100,
       height = 100,
+      rotation = 0,
     } = child;
 
     const rootCoordinates = {
@@ -59,34 +62,34 @@ async function convertChildrenToHtml(children) {
       height,
     };
 
-    let html = "";
+    let html = "<div></div>";
 
-    if (type === "text") {
-      html = convertTextJsonToHtml(child, rootCoordinates);
-    } else {
-      switch (elementType) {
-        case "logo":
-          html = await convertLogoJsonToHtml(child, rootCoordinates);
-          break;
-        case "line_outline":
-        case "line":
-          html = await convertLineJsonToHtml(child, rootCoordinates);
-          break;
-        case "star_rating":
-          html = await convertStarRatingJsonToHtml(child, rootCoordinates);
-          break;
-        case "graphicShape":
-        case "complex_svg":
-          html = await convertShapeJsonToHtml(child, rootCoordinates);
-          break;
-        case "image":
-        case "svg":
-          html = await convertImgJsonToHtml(child, rootCoordinates);
-          break;
-        default:
-          console.warn(`Unknown type or elementType: ${type || elementType}`);
-      }
-    }
+    // if (type === "text") {
+    //   html = convertTextJsonToHtml(child, rootCoordinates);
+    // } else {
+    //   switch (elementType) {
+    //     case "logo":
+    //       html = await convertLogoJsonToHtml(child, rootCoordinates);
+    //       break;
+    //     case "line_outline":
+    //     case "line":
+    //       html = await convertLineJsonToHtml(child, rootCoordinates);
+    //       break;
+    //     case "star_rating":
+    //       html = await convertStarRatingJsonToHtml(child, rootCoordinates);
+    //       break;
+    //     case "graphicShape":
+    //     case "complex_svg":
+    //       html = await convertShapeJsonToHtml(child, rootCoordinates);
+    //       break;
+    //     case "image":
+    //     case "svg":
+    //       html = await convertImgJsonToHtml(child, rootCoordinates);
+    //       break;
+    //     default:
+    //       console.warn(`Unknown type or elementType: ${type || elementType}`);
+    //   }
+    // }
 
     if (html) {
       htmlElements.push({
@@ -95,6 +98,7 @@ async function convertChildrenToHtml(children) {
         y,
         width,
         height,
+        rotation,
         zIndex: child.zIndex || 0,
       });
     }
@@ -104,12 +108,13 @@ async function convertChildrenToHtml(children) {
   return htmlElements;
 }
 
-export async function genreateLayoutHtml({ isExporting = false, page }) {
+export async function generateLayoutHtml({ isExporting = false, page }) {
   const { children, width, height, background } = page;
   const baseStyle = getResetCSS();
 
   const htmlElements = await convertChildrenToHtml(children);
 
+  console.log("HTML Elements:", htmlElements);
   // Sort by z-index to maintain proper layering
   htmlElements.sort((a, b) => a.zIndex - b.zIndex);
 
@@ -123,6 +128,8 @@ export async function genreateLayoutHtml({ isExporting = false, page }) {
         width: ${element.width}px;
         height: ${element.height}px;
         z-index: ${element.zIndex};
+        rotate: ${element.rotation}deg;
+        border: 1px solid black;
       ">
         ${element.html}
       </div>
@@ -138,8 +145,7 @@ export async function genreateLayoutHtml({ isExporting = false, page }) {
           width: ${width}px;
           height: ${height || "auto"}px;
           position: relative;
-          overflow: ${isExporting ? "unset" : "auto"};
-          overflow-x: hidden;
+          overflow: ${isExporting ? "unset" : "hidden"};
           ${background ? `background: ${background};` : "background: #ffffff;"}
           "
       >
