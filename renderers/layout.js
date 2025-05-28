@@ -1,6 +1,7 @@
 import { convertImgJsonToHtml } from "./image.js";
 import { convertLogoJsonToHtml } from "./logo.js";
-import { textJsonToHtml } from "./new/text.js";
+import { imageJsonToHtml } from "./new-renderers/image.js";
+import { textJsonToHtml } from "./new-renderers/text.js";
 import {
   convertLineJsonToHtml,
   convertShapeJsonToHtml,
@@ -54,14 +55,11 @@ async function convertChildrenToHtml(children) {
       width = 100,
       height = 100,
       rotation = 0,
+      padding = { vertical: 0, horizontal: 0 },
+      strokeBgWidth = 0,
     } = child;
 
-    const rootCoordinates = {
-      x,
-      y,
-      width,
-      height,
-    };
+    child = { ...child, strokeBgWidth: strokeBgWidth / 2 };
 
     let html = `<div></div>`;
 
@@ -81,6 +79,7 @@ async function convertChildrenToHtml(children) {
           break;
         case "image":
         case "svg":
+          html = imageJsonToHtml(child);
           break;
         default:
       }
@@ -121,6 +120,8 @@ async function convertChildrenToHtml(children) {
         width,
         height,
         rotation,
+        padding,
+        strokeBgWidth: strokeBgWidth / 2,
         zIndex: child.zIndex || 0,
       });
     }
@@ -137,25 +138,34 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
   const htmlElements = await convertChildrenToHtml(children);
 
   console.log("HTML Elements:", htmlElements);
-  // Sort by z-index to maintain proper layering
   htmlElements.sort((a, b) => a.zIndex - b.zIndex);
 
   const elementsHtml = htmlElements
     .map(
-      (element) => `
+      ({
+        x,
+        y,
+        width,
+        height,
+        zIndex,
+        rotation,
+        padding,
+        strokeBgWidth,
+        html,
+      }) => `
       <div style="
         position: absolute;
-        left: ${element.x}px;
-        top: ${element.y}px;
-        width: ${element.width}px;
-        height: ${element.height}px;
-        z-index: ${element.zIndex};
-        rotate: ${element.rotation}deg;
+        left: ${x}px;
+        top: ${y}px;
+        width: ${width + padding.horizontal * 2 + strokeBgWidth * 2}px;
+        height: ${height + padding.vertical * 2 + strokeBgWidth * 2}px;
+        z-index: ${zIndex};
+        rotate: ${rotation}deg;
         transform-origin: top left; 
-        border: 1px solid black;
         display: flex;
+        box-sizing: content-box;
       ">
-        ${element.html}
+        ${html}
       </div>
     `
     )
