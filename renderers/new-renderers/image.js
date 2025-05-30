@@ -1,5 +1,4 @@
-import { convertHexToRgba } from "../../utils/color.js";
-import { cssify } from "./base.js";
+import { convertHexToRgba, cssify } from "./base.js";
 
 export const imageJsonToHtml = (json) => {
   console.log("Image JSON:", json);
@@ -33,6 +32,10 @@ export const imageJsonToHtml = (json) => {
 
   const flipTransform = flipHorizontal ? "scaleX(-1)" : "";
   const flipVerticalTransform = flipVertical ? "scaleY(-1)" : "";
+  const transform =
+    flipTransform || flipVerticalTransform
+      ? `${flipTransform} ${flipVerticalTransform}`
+      : "none";
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
       ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
@@ -47,7 +50,7 @@ export const imageJsonToHtml = (json) => {
     height: `${(100 / (100 * cropHeight)) * 100}%`,
     top: `-${(100 / (100 * cropHeight)) * cropY * 100}%`,
     left: `-${(100 / (100 * cropWidth)) * cropX * 100}%`,
-    transform: `${flipTransform} ${flipVerticalTransform}`,
+    transform: transform,
     "background-color": `${fill}`,
     "z-index": 1,
   };

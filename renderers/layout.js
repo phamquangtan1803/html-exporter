@@ -1,6 +1,7 @@
 import { convertImgJsonToHtml } from "./image.js";
 import { convertLogoJsonToHtml } from "./logo.js";
 import { imageJsonToHtml } from "./new-renderers/image.js";
+import { logoJsonToHtml } from "./new-renderers/logo.js";
 import { textJsonToHtml } from "./new-renderers/text.js";
 import {
   convertLineJsonToHtml,
@@ -68,6 +69,7 @@ async function convertChildrenToHtml(children) {
     } else {
       switch (elementType) {
         case "logo":
+          html = await logoJsonToHtml(child);
           break;
         case "line_outline":
         case "line":
