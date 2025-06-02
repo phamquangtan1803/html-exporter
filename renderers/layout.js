@@ -124,7 +124,7 @@ async function convertChildrenToHtml(children) {
         rotation,
         padding,
         strokeBgWidth: strokeBgWidth / 2,
-        zIndex: child.zIndex || 0,
+        index: child.index || 0,
       });
     }
   });
@@ -139,8 +139,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
 
   const htmlElements = await convertChildrenToHtml(children);
 
-  console.log("HTML Elements:", htmlElements);
-  htmlElements.sort((a, b) => a.zIndex - b.zIndex);
+  htmlElements.sort((a, b) => a.index - b.index);
 
   const elementsHtml = htmlElements
     .map(
@@ -149,7 +148,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         y,
         width,
         height,
-        zIndex,
+        index,
         rotation,
         padding,
         strokeBgWidth,
@@ -161,7 +160,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         top: ${y}px;
         width: ${width + padding.horizontal * 2 + strokeBgWidth * 2}px;
         height: ${height + padding.vertical * 2 + strokeBgWidth * 2}px;
-        z-index: ${zIndex};
+        z-index: ${index};
         rotate: ${rotation}deg;
         transform-origin: top left; 
         display: flex;
