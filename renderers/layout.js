@@ -1,5 +1,6 @@
 import { convertImgJsonToHtml } from "./image.js";
 import { convertLogoJsonToHtml } from "./logo.js";
+import { prefetchFonts } from "./new-renderers/base.js";
 import { imageJsonToHtml } from "./new-renderers/image.js";
 import { logoJsonToHtml } from "./new-renderers/logo.js";
 import { textJsonToHtml } from "./new-renderers/text.js";
@@ -200,15 +201,17 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
       return acc;
     }, []);
 
-  const defaultFontFaces = defaultFonts.map(
-    (font) => `
+  const defaultFontFaces = await Promise.all(
+    defaultFonts.map(
+      async (font) => `
       @font-face {
         font-family: '${font.fontFamily}';
-        src: url('${font.s3FilePath}') format('truetype');
+        src: url('${await prefetchFonts(font.s3FilePath)}') format('truetype');
         font-weight: normal;
         font-style: normal;
       }
     `
+    )
   );
 
   return `

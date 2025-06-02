@@ -18,6 +18,21 @@ export const changeSvgColor = async (src, fill) => {
   return `data:image/svg+xml;base64,${btoa(svgContent)}`;
 };
 
+export const prefetchFonts = async (src) => {
+  let blob = await (await fetch(src)).blob();
+  let base64 = await blobToBase64(blob);
+
+  return `data:font/truetype;charset=utf-8;base64,${base64}`;
+};
+
+function blobToBase64(blob) {
+  return new Promise(async (resolve) => {
+    var buffer = await blob.arrayBuffer();
+    buffer = Buffer.from(buffer);
+    return resolve(buffer.toString("base64"));
+  });
+}
+
 export const kebabCase = (str) => {
   return str
     .replace(/([a-z])([A-Z])/g, "$1-$2")
