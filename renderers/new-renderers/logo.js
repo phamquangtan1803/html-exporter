@@ -1,5 +1,5 @@
 import tinycolor from "tinycolor2";
-import { changeSvgColor, cssify, getLogoPaddingValues } from "./base.js";
+import { changeSvgColorFromSrc, cssify, getLogoPaddingValues } from "./base.js";
 
 export const logoJsonToHtml = async (json) => {
   console.log("Logo JSON:", json);
@@ -51,7 +51,7 @@ export const logoJsonToHtml = async (json) => {
     "align-items": alignItems,
   };
 
-  const logo = await changeSvgColor(src, fillColor);
+  const logo = await changeSvgColorFromSrc(src, fillColor);
   const cssLogoStyle = cssify(logoStyle);
   const cssOuterStyle = cssify(outerStyle);
 

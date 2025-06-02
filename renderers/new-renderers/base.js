@@ -9,13 +9,38 @@ export function convertHexToRgba(hex, alpha = 1) {
   return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${alpha})`;
 }
 
-export const changeSvgColor = async (src, fill) => {
-  const response = await fetch(src);
-  let svgContent = await response.text();
+export const stretchySvg = (svgContent) => {
+  // Extract width and height values before removing them
+  const widthMatch = svgContent.match(/width="([^"]*)"/)?.[0] || "100";
+  const heightMatch = svgContent.match(/height="([^"]*)"/)?.[0] || "100";
+
+  // Remove only width and height of svg tag, not the children
+  svgContent = svgContent.replace(/<svg([^>]*)width="[^"]*"/, "<svg$1");
+  svgContent = svgContent.replace(/<svg([^>]*)height="[^"]*"/, "<svg$1");
+
+  if (!svgContent.match(/viewBox="[^"]*"/)) {
+    svgContent = svgContent.replace(
+      /<svg/,
+      `<svg viewBox="0 0 ${widthMatch} ${heightMatch}"`
+    );
+  }
+  if (!svgContent.match(/preserveAspectRatio="[^"]*"/)) {
+    svgContent = svgContent.replace(/<svg/, `<svg preserveAspectRatio="none" `);
+  }
+  return svgContent;
+};
+
+export const changeSvgColor = (svgContent, fill) => {
   if (fill && fill !== "transparent") {
     svgContent = svgContent.replace(/fill="[^"]*"/g, `fill="${fill}"`);
   }
   return `data:image/svg+xml;base64,${btoa(svgContent)}`;
+};
+
+export const changeSvgColorFromSrc = async (src, fill) => {
+  const response = await fetch(src);
+  let svgContent = await response.text();
+  return changeSvgColor(svgContent, fill);
 };
 
 export const prefetchFonts = async (src) => {

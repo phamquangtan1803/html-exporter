@@ -3,6 +3,7 @@ import { convertLogoJsonToHtml } from "./logo.js";
 import { prefetchFonts } from "./new-renderers/base.js";
 import { imageJsonToHtml } from "./new-renderers/image.js";
 import { logoJsonToHtml } from "./new-renderers/logo.js";
+import { shapeJsonToHtml } from "./new-renderers/shape.js";
 import { textJsonToHtml } from "./new-renderers/text.js";
 import {
   convertLineJsonToHtml,
@@ -79,6 +80,7 @@ async function convertChildrenToHtml(children) {
           break;
         case "graphicShape":
         case "complex_svg":
+          html = await shapeJsonToHtml(child);
           break;
         case "image":
         case "svg":
