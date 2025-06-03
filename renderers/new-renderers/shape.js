@@ -36,9 +36,9 @@ export const shapeJsonToHtml = async (json) => {
 
   const svgSrc = changeSvgColor(stretchySvg(svgElement.svgString), fill);
   const imgSrc = src;
+  const shapeType = svgElement.children[0].type;
 
   console.log("strecthySvg", stretchySvg(svgElement.svgString));
-
   console.log("svgElement", svgElement);
 
   const shadow =
@@ -48,20 +48,38 @@ export const shapeJsonToHtml = async (json) => {
           shadowOpacity
         )}`
       : "none";
-
   const radius = `${cornerRadiusTopLeft}px 
                       ${cornerRadiusTopRight}px 
                       ${cornerRadiusBottomRight}px 
                       ${cornerRadiusBottomLeft}px`;
+  const calculatedCropY =
+    shapeType === "ellipse" ? 0.5 + cropY - 0.5 * cropHeight : cropY;
+  const calculatedCropX =
+    shapeType === "ellipse" ? 0.5 + cropX - 0.5 * cropWidth : cropX;
 
-  const imgStyle = {
+  const shapeStyle = {
+    width: "100%",
+    height: "100%",
     position: "absolute",
-    width: `${(100 / (100 * cropWidth)) * 100}%`,
-    height: `${(100 / (100 * cropHeight)) * 100}%`,
-    top: `${-(100 / (100 * cropHeight)) * cropY * 100}%`,
-    left: `${-(100 / (100 * cropWidth)) * cropX * 100}%`,
+    "z-index": 0,
+    "object-fit": "fill",
+  };
+
+  const imgContainerStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
     "border-radius": `${radius}`,
     "z-index": 1,
+    "mask-image": `url(${svgSrc})`,
+  };
+
+  const imgStyle = {
+    width: `${(100 / (100 * cropWidth)) * 100}%`,
+    height: `${(100 / (100 * cropHeight)) * 100}%`,
+    top: `-${(100 / (100 * cropHeight)) * calculatedCropY * 100}%`,
+    left: `-${(100 / (100 * cropWidth)) * calculatedCropX * 100}%`,
+    position: "absolute",
   };
 
   const borderStyle = {
@@ -92,17 +110,20 @@ export const shapeJsonToHtml = async (json) => {
     "border-radius": `${radius}`,
     "box-shadow": `${shadow}`,
     opacity: `${opacity}`,
-    "mask-image": `url(${svgSrc})`,
-    "background-color": `${fill}`,
   };
 
   const cssContainerStyle = cssify(containerStyle);
+  const cssShapeStyle = cssify(shapeStyle);
   const cssImgStyle = cssify(imgStyle);
+  const cssImgContainerStyle = cssify(imgContainerStyle);
   const cssBorderStyle = cssify(borderStyle);
   const cssOverlayStyle = cssify(overlayStyle);
 
   return `<div style="${cssContainerStyle}">
-            ${imgSrc && `<img style="${cssImgStyle}" src="${imgSrc}"/>`}
+            <img style="${cssShapeStyle}" src="${svgSrc}"/>
+            <div style="${cssImgContainerStyle}">
+              <img style="${cssImgStyle}" src="${imgSrc}" />
+            </div>
             <div style="${cssBorderStyle}"></div>
             <div style="${cssOverlayStyle}"></div>
         </div>`;
