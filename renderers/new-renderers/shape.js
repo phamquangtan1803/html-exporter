@@ -8,7 +8,7 @@ import {
 export const shapeJsonToHtml = async (json) => {
   const {
     svgElement,
-    fill,
+    fill = "transparent",
     stroke,
     strokeWidth,
     cornerRadiusTopLeft,
@@ -37,30 +37,51 @@ export const shapeJsonToHtml = async (json) => {
   const svgSrc = await changeSvgColor(stretchySvg(svgElement.svgString), fill);
   const imgSrc = src;
   const shapeType = svgElement.children[0].type;
+  const isRect = shapeType === "rect";
+  const isEllipse = shapeType === "ellipse";
 
   console.log("strecthySvg", stretchySvg(svgElement.svgString));
   console.log("svgElement", svgElement);
 
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
-          shadowColor,
-          shadowOpacity
-        )}`
+      ? `${shadowOffsetX}px ${shadowOffsetY}px ${
+          shadowBlur / 2
+        }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";
   const radius = `${cornerRadiusTopLeft}px 
                       ${cornerRadiusTopRight}px 
                       ${cornerRadiusBottomRight}px 
                       ${cornerRadiusBottomLeft}px`;
-  const calculatedCropY =
-    shapeType === "ellipse" ? 0.5 + cropY - 0.5 * cropHeight : cropY;
-  const calculatedCropX =
-    shapeType === "ellipse" ? 0.5 + cropX - 0.5 * cropWidth : cropX;
+  const calculatedCropY = isEllipse ? 0.5 + cropY - 0.5 * cropHeight : cropY;
+  const calculatedCropX = isEllipse ? 0.5 + cropX - 0.5 * cropWidth : cropX;
+  const calculatedBorderStyle = {
+    width:
+      isRect || isEllipse ? "100%" : `calc(100% + ${strokeWidth * 1.25}px)`,
+    height:
+      isRect || isEllipse ? "100%" : `calc(100% + ${strokeWidth * 1.25}px)`,
+    top: isRect || isEllipse ? "0" : `-${(strokeWidth * 1.25) / 2}px`,
+    left: isRect || isEllipse ? "0" : `-${(strokeWidth * 1.25) / 2}px`,
+    maskSize:
+      isRect || isEllipse
+        ? `100% 100%, 
+          calc(100% - ${strokeWidth * 2}px) 
+          calc(100% - ${strokeWidth * 2}px)`
+        : `100% 100%, 
+          calc(100% - ${strokeWidth * 2.25}px) 
+          calc(100% - ${strokeWidth * 2.25}px)`,
+  };
+
+  const calculatedOverlayStyle = {
+    zIndex: isRect || isEllipse ? 4 : 2,
+    maskImage: isRect ? "none" : `url(${svgSrc})`,
+  };
 
   const shapeStyle = {
     width: "100%",
     height: "100%",
     position: "absolute",
+    "border-radius": `${radius}`,
     "z-index": 0,
     "object-fit": "fill",
   };
@@ -80,36 +101,45 @@ export const shapeJsonToHtml = async (json) => {
     top: `-${(100 / (100 * cropHeight)) * calculatedCropY * 100}%`,
     left: `-${(100 / (100 * cropWidth)) * calculatedCropX * 100}%`,
     position: "absolute",
+    "border-radius": `${radius}`,
   };
 
   const borderStyle = {
-    width: "100%",
-    height: "100%",
+    width: calculatedBorderStyle.width,
+    height: calculatedBorderStyle.height,
+    top: calculatedBorderStyle.top,
+    left: calculatedBorderStyle.left,
     position: "absolute",
-    "z-index": 2,
-    border: `${strokeWidth}px solid ${stroke}`,
+    "border-radius": `${radius}`,
+    "z-index": 3,
+    "background-color": `${stroke}`,
+    "mask-image": `url(${svgSrc}), url(${svgSrc})`,
+    "mask-size": calculatedBorderStyle.maskSize,
+    "mask-position": "center",
+    "mask-repeat": "no-repeat",
+    "mask-composite": "subtract",
   };
 
   const overlayStyle = {
     width: "100%",
     height: "100%",
     position: "absolute",
-    "z-index": 3,
+    "border-radius": `${radius}`,
+    "z-index": calculatedOverlayStyle.zIndex,
     "background-color": `${convertHexToRgba(
       overlayFill || "#fff",
       overlayFill ? alpha : 0
     )}`,
-    "border-radius": `${radius}`,
+    "mask-image": calculatedOverlayStyle.maskImage,
   };
 
   const containerStyle = {
     width: "100%",
     height: "100%",
-    overflow: "hidden",
     position: "relative",
     "border-radius": `${radius}`,
-    "box-shadow": `${shadow}`,
     opacity: `${opacity}`,
+    filter: `drop-shadow(${shadow})`,
   };
 
   const cssContainerStyle = cssify(containerStyle);
@@ -121,9 +151,12 @@ export const shapeJsonToHtml = async (json) => {
 
   return `<div style="${cssContainerStyle}">
             <img style="${cssShapeStyle}" src="${svgSrc}"/>
-            <div style="${cssImgContainerStyle}">
+            ${
+              imgSrc &&
+              `<div style="${cssImgContainerStyle}">
               <img style="${cssImgStyle}" src="${imgSrc}" />
-            </div>
+            </div>`
+            }
             <div style="${cssBorderStyle}"></div>
             <div style="${cssOverlayStyle}"></div>
         </div>`;
