@@ -34,7 +34,7 @@ export const shapeJsonToHtml = async (json) => {
     shadowEnabled,
   } = json;
 
-  const svgSrc = changeSvgColor(stretchySvg(svgElement.svgString), fill);
+  const svgSrc = await changeSvgColor(stretchySvg(svgElement.svgString), fill);
   const imgSrc = src;
   const shapeType = svgElement.children[0].type;
 

@@ -1,3 +1,4 @@
+import { parse, stringify } from "svgson";
 import tinycolor from "tinycolor2";
 
 export function convertHexToRgba(hex, alpha = 1) {
@@ -30,17 +31,92 @@ export const stretchySvg = (svgContent) => {
   return svgContent;
 };
 
-export const changeSvgColor = (svgContent, fill) => {
-  if (fill && fill !== "transparent") {
-    svgContent = svgContent.replace(/fill="[^"]*"/g, `fill="${fill}"`);
+export const applyFillColor = (node, fillColor) => {
+  if (!fillColor || fillColor === "transparent" || !node || !node.attributes) {
+    return;
   }
-  return `data:image/svg+xml;base64,${btoa(svgContent)}`;
+
+  const transparentColors = new Set([
+    "none",
+    "transparent",
+    "rgba(0,0,0,0)",
+    "rgba(255,255,255,0)",
+  ]);
+
+  // Handle CSS style definitions in defs
+  if (node.name === "style" && node.children && node.children.length > 0) {
+    node.children.forEach((child) => {
+      if (child.type === "text" && child.value) {
+        child.value = child.value.replace(
+          /\.cls-\d+\s*{[^}]*fill:\s*[^;]+/g,
+          (match) => match.replace(/fill:\s*[^;]+/, `fill: ${fillColor}`)
+        );
+      }
+    });
+    return;
+  }
+
+  // Function to replace attribute colors if applicable
+  const replaceColor = (attr) => {
+    if (
+      node.attributes[attr] &&
+      !transparentColors.has(node.attributes[attr])
+    ) {
+      node.attributes[attr] = fillColor;
+    }
+  };
+
+  replaceColor("fill");
+  replaceColor("stroke");
+
+  // Handle inline style attributes
+  if (node.attributes.style) {
+    let style = node.attributes.style;
+
+    if (!style.includes("fill:") && !style.includes("stroke:")) {
+      style += `fill: ${fillColor}; stroke: ${fillColor};`;
+    } else {
+      style = style
+        .replace(/fill:\s*([^;]+)/g, (match, color) =>
+          transparentColors.has(color.trim().toLowerCase()) ||
+          color.startsWith("url(")
+            ? match
+            : `fill: ${fillColor}`
+        )
+        .replace(/stroke:\s*([^;]+)/g, (match, color) =>
+          transparentColors.has(color.trim().toLowerCase()) ||
+          color.startsWith("url(")
+            ? match
+            : `stroke: ${fillColor}`
+        );
+    }
+
+    node.attributes.style = style;
+  }
+
+  // Process gradient stops
+  if (node.name === "stop" && node.attributes["stop-color"]) {
+    if (!transparentColors.has(node.attributes["stop-color"].toLowerCase())) {
+      node.attributes["stop-color"] = fillColor;
+    }
+  }
+
+  // Recursively process ALL children, including defs
+  if (node.children) {
+    node.children.forEach((child) => applyFillColor(child, fillColor));
+  }
+};
+
+export const changeSvgColor = async (svgContent, fillColor) => {
+  svgContent = await parse(svgContent);
+  applyFillColor(svgContent, fillColor);
+  return `data:image/svg+xml;base64,${btoa(stringify(svgContent))}`;
 };
 
 export const changeSvgColorFromSrc = async (src, fill) => {
   const response = await fetch(src);
   let svgContent = await response.text();
-  return changeSvgColor(svgContent, fill);
+  return await changeSvgColor(svgContent, fill);
 };
 
 export const prefetchFonts = async (src) => {
