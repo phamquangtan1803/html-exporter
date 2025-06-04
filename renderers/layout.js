@@ -2,6 +2,7 @@ import { convertImgJsonToHtml } from "./image.js";
 import { convertLogoJsonToHtml } from "./logo.js";
 import { prefetchFonts } from "./new-renderers/base.js";
 import { imageJsonToHtml } from "./new-renderers/image.js";
+import { getLineRotation, lineJsonToHtml } from "./new-renderers/line.js";
 import { logoJsonToHtml } from "./new-renderers/logo.js";
 import { shapeJsonToHtml } from "./new-renderers/shape.js";
 import { textJsonToHtml } from "./new-renderers/text.js";
@@ -65,6 +66,10 @@ async function convertChildrenToHtml(children) {
     child = { ...child, strokeBgWidth: strokeBgWidth / 2 };
 
     let html = `<div></div>`;
+    let calculated = {
+      rotation: rotation,
+      transformOrigin: "top left",
+    };
 
     if (type === "text") {
       html = textJsonToHtml(child);
@@ -75,6 +80,9 @@ async function convertChildrenToHtml(children) {
           break;
         case "line_outline":
         case "line":
+          html = lineJsonToHtml(child);
+          calculated.rotation = getLineRotation(child.points);
+          calculated.transformOrigin = `left ${child.strokeWidth / 2}px`;
           break;
         case "star_rating":
           break;
@@ -124,7 +132,8 @@ async function convertChildrenToHtml(children) {
         y,
         width,
         height,
-        rotation,
+        rotation: calculated.rotation,
+        transformOrigin: calculated.transformOrigin,
         padding,
         strokeBgWidth: strokeBgWidth / 2,
         index: child.index || 0,
@@ -153,6 +162,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         height,
         index,
         rotation,
+        transformOrigin,
         padding,
         strokeBgWidth,
         html,
@@ -165,7 +175,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         height: ${height + padding.vertical * 2 + strokeBgWidth * 2}px;
         z-index: ${index};
         rotate: ${rotation}deg;
-        transform-origin: top left; 
+        transform-origin: ${transformOrigin}; 
         display: flex;
         box-sizing: content-box;
       ">
