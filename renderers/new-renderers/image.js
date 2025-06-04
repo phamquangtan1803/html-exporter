@@ -1,6 +1,6 @@
-import { convertHexToRgba, cssify } from "./base.js";
+import { changeSvgColorFromSrc, convertHexToRgba, cssify } from "./base.js";
 
-export const imageJsonToHtml = (json) => {
+export const imageJsonToHtml = async (json) => {
   console.log("Image JSON:", json);
   const {
     src,
@@ -30,6 +30,9 @@ export const imageJsonToHtml = (json) => {
     opacity = 1,
   } = json;
 
+  const imgSrc = src.endsWith(".svg")
+    ? await changeSvgColorFromSrc(src, fill)
+    : src;
   const flipTransform = flipHorizontal ? "scaleX(-1)" : "";
   const flipVerticalTransform = flipVertical ? "scaleY(-1)" : "";
   const transform =
@@ -44,6 +47,8 @@ export const imageJsonToHtml = (json) => {
         )}`
       : "none";
 
+  const calculatedBackgroundColor = src.endsWith(".svg") ? "none" : fill;
+
   const imageStyle = {
     position: "absolute",
     width: `${(100 / (100 * cropWidth)) * 100}%`,
@@ -51,7 +56,7 @@ export const imageJsonToHtml = (json) => {
     top: `-${(100 / (100 * cropHeight)) * cropY * 100}%`,
     left: `-${(100 / (100 * cropWidth)) * cropX * 100}%`,
     transform: transform,
-    "background-color": `${fill}`,
+    "background-color": `${calculatedBackgroundColor}`,
     "z-index": 1,
   };
 
@@ -103,7 +108,7 @@ export const imageJsonToHtml = (json) => {
 
   return `<div style="${cssContainerStyle}">
             <img style="${cssImageStyle}" 
-                  src="${src}" />
+                  src="${imgSrc}" />
             <div style="${cssImageOverlayStyle}"></div>
             <div style="${cssBorderOverlayStyle}"></div>
           </div>`;

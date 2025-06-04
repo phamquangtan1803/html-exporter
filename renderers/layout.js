@@ -1,17 +1,11 @@
-import { convertImgJsonToHtml } from "./image.js";
-import { convertLogoJsonToHtml } from "./logo.js";
+import { STAR_RATING_ELEMENT } from "./constant.js";
 import { prefetchFonts } from "./new-renderers/base.js";
 import { imageJsonToHtml } from "./new-renderers/image.js";
 import { getLineRotation, lineJsonToHtml } from "./new-renderers/line.js";
 import { logoJsonToHtml } from "./new-renderers/logo.js";
 import { shapeJsonToHtml } from "./new-renderers/shape.js";
+import { starSvgJsonToHtml } from "./new-renderers/star.js";
 import { textJsonToHtml } from "./new-renderers/text.js";
-import {
-  convertLineJsonToHtml,
-  convertShapeJsonToHtml,
-  convertStarRatingJsonToHtml,
-} from "./shape.js";
-import { convertTextJsonToHtml } from "./text.js";
 
 function getResetCSS() {
   return `
@@ -61,6 +55,7 @@ async function convertChildrenToHtml(children) {
       rotation = 0,
       padding = { vertical: 0, horizontal: 0 },
       strokeBgWidth = 0,
+      index = 0,
     } = child;
 
     child = { ...child, strokeBgWidth: strokeBgWidth / 2 };
@@ -85,6 +80,7 @@ async function convertChildrenToHtml(children) {
           calculated.transformOrigin = `left ${child.strokeWidth / 2}px`;
           break;
         case "star_rating":
+          html = starSvgJsonToHtml(STAR_RATING_ELEMENT, child);
           break;
         case "graphicShape":
         case "complex_svg":
@@ -92,9 +88,10 @@ async function convertChildrenToHtml(children) {
           break;
         case "image":
         case "svg":
-          html = imageJsonToHtml(child);
+          html = await imageJsonToHtml(child);
           break;
         default:
+          break;
       }
     }
 
@@ -136,7 +133,7 @@ async function convertChildrenToHtml(children) {
         transformOrigin: calculated.transformOrigin,
         padding,
         strokeBgWidth: strokeBgWidth / 2,
-        index: child.index || 0,
+        index: index,
       });
     }
   });
