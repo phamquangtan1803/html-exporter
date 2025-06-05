@@ -83,11 +83,11 @@ async function convertChildrenToHtml(children) {
           html = starSvgJsonToHtml(STAR_RATING_ELEMENT, child);
           break;
         case "graphicShape":
-        case "complex_svg":
           html = await shapeJsonToHtml(child);
           break;
         case "image":
         case "svg":
+        case "complex_svg":
           html = await imageJsonToHtml(child);
           break;
         default:
