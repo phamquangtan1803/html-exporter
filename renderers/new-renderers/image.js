@@ -28,7 +28,21 @@ export const imageJsonToHtml = async (json) => {
     shadowOffsetX = 0,
     shadowOffsetY = 0,
     opacity = 1,
+    rotation = 0,
   } = json;
+
+  // Calculate counter-rotated shadow offsets
+  let adjustedOffsetX = shadowOffsetX;
+  let adjustedOffsetY = shadowOffsetY;
+  if (shadowEnabled && rotation !== 0) {
+    const angleInRadians = (-rotation * Math.PI) / 180;
+    adjustedOffsetX =
+      shadowOffsetX * Math.cos(angleInRadians) -
+      shadowOffsetY * Math.sin(angleInRadians);
+    adjustedOffsetY =
+      shadowOffsetX * Math.sin(angleInRadians) +
+      shadowOffsetY * Math.cos(angleInRadians);
+  }
 
   const imgSrc = src.endsWith(".svg")
     ? await changeSvgColorFromSrc(src, fill)
@@ -41,74 +55,78 @@ export const imageJsonToHtml = async (json) => {
       : "none";
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
-          shadowColor,
-          shadowOpacity
-        )}`
+      ? `${adjustedOffsetX}px ${adjustedOffsetY}px ${
+          shadowBlur / 2
+        }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";
+  const radius = `${cornerRadiusTopLeft}px 
+                  ${cornerRadiusTopRight}px 
+                  ${cornerRadiusBottomRight}px 
+                  ${cornerRadiusBottomLeft}px`;
 
   const calculatedBackgroundColor = src.endsWith(".svg") ? "none" : fill;
 
-  const imageStyle = {
+  const imageContainerStyle = {
+    width: "100%",
+    height: "100%",
     position: "absolute",
+    "z-index": 1,
+    "border-radius": `${radius}`,
+    overflow: "hidden",
+    filter: `drop-shadow(${shadow})`,
+  };
+
+  const imageStyle = {
+    position: "relative",
     width: `${(100 / (100 * cropWidth)) * 100}%`,
     height: `${(100 / (100 * cropHeight)) * 100}%`,
     top: `-${(100 / (100 * cropHeight)) * cropY * 100}%`,
     left: `-${(100 / (100 * cropWidth)) * cropX * 100}%`,
     transform: transform,
     "background-color": `${calculatedBackgroundColor}`,
-    "z-index": 1,
   };
 
   const imageOverlayStyle = {
-    position: "absolute",
     width: "100%",
     height: "100%",
+    position: "absolute",
+    "z-index": 2,
+    "border-radius": `${radius}`,
     "background-color": `${convertHexToRgba(
       overlayFill || "#fff",
       overlayFill ? alpha : 0
     )}`,
-    "border-radius": `${cornerRadiusTopLeft}px 
-                      ${cornerRadiusTopRight}px 
-                      ${cornerRadiusBottomRight}px 
-                      ${cornerRadiusBottomLeft}px`,
-    "z-index": 2,
   };
 
   const borderOverlayStyle = {
-    position: "absolute",
     width: "100%",
     height: "100%",
-    "border-radius": `${cornerRadiusTopLeft}px 
-                      ${cornerRadiusTopRight}px 
-                      ${cornerRadiusBottomRight}px 
-                      ${cornerRadiusBottomLeft}px`,
-    border: `${strokeWidth}px solid ${stroke}`,
+    position: "absolute",
     "z-index": 3,
+    "border-radius": `${radius}`,
+    border: `${strokeWidth}px solid ${stroke}`,
   };
 
   const containerStyle = {
     width: "100%",
     height: "100%",
-    overflow: "hidden",
     position: "relative",
-    "border-radius": `${cornerRadiusTopLeft}px 
-                      ${cornerRadiusTopRight}px 
-                      ${cornerRadiusBottomRight}px 
-                      ${cornerRadiusBottomLeft}px`,
-    "box-shadow": `${shadow}`,
+    "border-radius": `${radius}`,
     opacity: `${opacity}`,
   };
 
   const cssImageStyle = cssify(imageStyle);
+  const cssImageContainerStyle = cssify(imageContainerStyle);
   const cssImageOverlayStyle = cssify(imageOverlayStyle);
   const cssBorderOverlayStyle = cssify(borderOverlayStyle);
 
   const cssContainerStyle = cssify(containerStyle);
 
   return `<div style="${cssContainerStyle}">
+          <div style="${cssImageContainerStyle}">
             <img style="${cssImageStyle}" 
                   src="${imgSrc}" />
+          </div>
             <div style="${cssImageOverlayStyle}"></div>
             <div style="${cssBorderOverlayStyle}"></div>
           </div>`;
