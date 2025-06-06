@@ -125,9 +125,12 @@ export const shapeJsonToHtml = async (json) => {
 
   return `<div style="${cssContainerStyle}">
             <img style="${cssShapeStyle}" src="${svgSrc}"/>
-            <div style="${cssImgContainerStyle}">
+            ${
+              imgSrc &&
+              `<div style="${cssImgContainerStyle}">
               <img style="${cssImgStyle}" src="${imgSrc}" />
-            </div>
+            </div>`
+            }
             <div style="${cssBorderStyle}"></div>
             <div style="${cssOverlayStyle}"></div>
         </div>`;
