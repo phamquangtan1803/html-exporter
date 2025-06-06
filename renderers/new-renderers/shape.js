@@ -2,6 +2,7 @@ import {
   changeSvgColor,
   convertHexToRgba,
   cssify,
+  getOverlayElement,
   stretchySvg,
 } from "./base.js";
 
@@ -99,10 +100,6 @@ export const shapeJsonToHtml = async (json) => {
     height: "100%",
     position: "absolute",
     "z-index": 3,
-    "background-color": `${convertHexToRgba(
-      overlayFill || "#fff",
-      overlayFill ? alpha : 0
-    )}`,
     "border-radius": `${radius}`,
   };
 
@@ -121,7 +118,6 @@ export const shapeJsonToHtml = async (json) => {
   const cssImgStyle = cssify(imgStyle);
   const cssImgContainerStyle = cssify(imgContainerStyle);
   const cssBorderStyle = cssify(borderStyle);
-  const cssOverlayStyle = cssify(overlayStyle);
 
   return `<div style="${cssContainerStyle}">
             <img style="${cssShapeStyle}" src="${svgSrc}"/>
@@ -132,6 +128,6 @@ export const shapeJsonToHtml = async (json) => {
             </div>`
             }
             <div style="${cssBorderStyle}"></div>
-            <div style="${cssOverlayStyle}"></div>
+            ${getOverlayElement(gradient, overlayStyle, overlayFill, alpha)}
         </div>`;
 };

@@ -1,4 +1,4 @@
-import { convertHexToRgba, cssify } from "./base.js";
+import { convertHexToRgba, cssify, getOverlayElement } from "./base.js";
 
 export const getLineRotation = (points) => {
   const [x1, y1, x2, y2] = points;
@@ -15,6 +15,7 @@ export const lineJsonToHtml = (json) => {
     dash,
     alpha,
     overlayFill,
+    gradient,
     shadowEnabled,
     shadowColor,
     shadowBlur,
@@ -48,10 +49,6 @@ export const lineJsonToHtml = (json) => {
     height: "100%",
     position: "absolute",
     "z-index": 1,
-    "background-color": `${convertHexToRgba(
-      overlayFill || "#fff",
-      overlayFill ? alpha : 0
-    )}`,
   };
 
   const svgContainerStyle = {
@@ -61,7 +58,6 @@ export const lineJsonToHtml = (json) => {
   };
 
   const cssSvgStyle = cssify(svgStyle);
-  const cssOverlayStyle = cssify(overlayStyle);
   const cssContainerStyle = cssify(svgContainerStyle);
   return `
         <div style="${cssContainerStyle}">
@@ -72,7 +68,7 @@ export const lineJsonToHtml = (json) => {
                     stroke-width="${strokeWidth}px"
                     ${dash ? `stroke-dasharray="${dash.join(",")}"` : ""}/>
             </svg>
-            <div style="${cssOverlayStyle}"></div>
+            ${getOverlayElement(gradient, overlayStyle, overlayFill, alpha)}
         </div>
         `;
 };

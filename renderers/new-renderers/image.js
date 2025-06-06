@@ -1,4 +1,9 @@
-import { changeSvgColorFromSrc, convertHexToRgba, cssify } from "./base.js";
+import {
+  changeSvgColorFromSrc,
+  convertHexToRgba,
+  cssify,
+  getOverlayElement,
+} from "./base.js";
 
 export const imageJsonToHtml = async (json) => {
   console.log("Image JSON:", json);
@@ -21,6 +26,7 @@ export const imageJsonToHtml = async (json) => {
     cornerRadiusBottomLeft = 0,
     alpha = 0,
     overlayFill,
+    gradient,
     shadowEnabled = false,
     shadowColor = "rgba(0, 0, 0, 0.5)",
     shadowBlur = 0,
@@ -81,13 +87,9 @@ export const imageJsonToHtml = async (json) => {
     position: "absolute",
     "z-index": 2,
     "border-radius": `${radius}`,
-    "background-color": `${convertHexToRgba(
-      overlayFill || "#fff",
-      overlayFill ? alpha : 0
-    )}`,
   };
 
-  const borderOverlayStyle = {
+  const imageStrokeStyle = {
     width: "100%",
     height: "100%",
     position: "absolute",
@@ -106,17 +108,21 @@ export const imageJsonToHtml = async (json) => {
 
   const cssImageStyle = cssify(imageStyle);
   const cssImageContainerStyle = cssify(imageContainerStyle);
-  const cssImageOverlayStyle = cssify(imageOverlayStyle);
-  const cssBorderOverlayStyle = cssify(borderOverlayStyle);
+  const cssImageStrokeStyle = cssify(imageStrokeStyle);
 
   const cssContainerStyle = cssify(containerStyle);
 
   return `<div style="${cssContainerStyle}">
-          <div style="${cssImageContainerStyle}">
-            <img style="${cssImageStyle}" 
-                  src="${imgSrc}" />
-          </div>
-            <div style="${cssImageOverlayStyle}"></div>
-            <div style="${cssBorderOverlayStyle}"></div>
+            <div style="${cssImageContainerStyle}">
+              <img style="${cssImageStyle}" 
+                    src="${imgSrc}" />
+            </div>
+            ${getOverlayElement(
+              gradient,
+              imageOverlayStyle,
+              overlayFill,
+              alpha
+            )}
+            <div style="${cssImageStrokeStyle}"></div>
           </div>`;
 };
