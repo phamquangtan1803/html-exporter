@@ -22,11 +22,13 @@ export const lineJsonToHtml = (json) => {
     shadowOffsetX,
     shadowOffsetY,
     opacity = 1,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
   } = json;
 
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${shadowOffsetX}px ${shadowOffsetY}px ${
+      ? `${adjustedShadowOffsetX}px ${adjustedShadowOffsetY}px ${
           shadowBlur / 2
         }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";

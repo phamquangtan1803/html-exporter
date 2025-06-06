@@ -29,20 +29,9 @@ export const imageJsonToHtml = async (json) => {
     shadowOffsetY = 0,
     opacity = 1,
     rotation = 0,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
   } = json;
-
-  // Calculate counter-rotated shadow offsets
-  let adjustedOffsetX = shadowOffsetX;
-  let adjustedOffsetY = shadowOffsetY;
-  if (shadowEnabled && rotation !== 0) {
-    const angleInRadians = (-rotation * Math.PI) / 180;
-    adjustedOffsetX =
-      shadowOffsetX * Math.cos(angleInRadians) -
-      shadowOffsetY * Math.sin(angleInRadians);
-    adjustedOffsetY =
-      shadowOffsetX * Math.sin(angleInRadians) +
-      shadowOffsetY * Math.cos(angleInRadians);
-  }
 
   const imgSrc = src.endsWith(".svg")
     ? await changeSvgColorFromSrc(src, fill)
@@ -55,7 +44,7 @@ export const imageJsonToHtml = async (json) => {
       : "none";
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${adjustedOffsetX}px ${adjustedOffsetY}px ${
+      ? `${adjustedShadowOffsetX}px ${adjustedShadowOffsetY}px ${
           shadowBlur / 2
         }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";

@@ -56,14 +56,39 @@ async function convertChildrenToHtml(children) {
       padding = { vertical: 0, horizontal: 0 },
       strokeBgWidth = 0,
       index = 0,
+      shadowEnabled = false,
+      shadowOffsetX = 0,
+      shadowOffsetY = 0,
     } = child;
 
-    child = { ...child, strokeBgWidth: strokeBgWidth / 2 };
-
-    let html = `<div></div>`;
     let calculated = {
       rotation: rotation,
       transformOrigin: "top left",
+    };
+
+    if (elementType === "line_outline" || elementType === "line") {
+      calculated.rotation = getLineRotation(child.points);
+      calculated.transformOrigin = `left ${child.strokeWidth / 2}px`;
+    }
+
+    let adjustedShadowOffsetX = shadowOffsetX;
+    let adjustedShadowOffsetY = shadowOffsetY;
+    if (shadowEnabled && calculated.rotation !== 0) {
+      const angleInRadians = (-calculated.rotation * Math.PI) / 180;
+      adjustedShadowOffsetX =
+        shadowOffsetX * Math.cos(angleInRadians) -
+        shadowOffsetY * Math.sin(angleInRadians);
+      adjustedShadowOffsetY =
+        shadowOffsetX * Math.sin(angleInRadians) +
+        shadowOffsetY * Math.cos(angleInRadians);
+    }
+
+    let html = `<div></div>`;
+    child = {
+      ...child,
+      strokeBgWidth: strokeBgWidth / 2,
+      adjustedShadowOffsetX,
+      adjustedShadowOffsetY,
     };
 
     if (type === "text") {
@@ -76,8 +101,6 @@ async function convertChildrenToHtml(children) {
         case "line_outline":
         case "line":
           html = lineJsonToHtml(child);
-          calculated.rotation = getLineRotation(child.points);
-          calculated.transformOrigin = `left ${child.strokeWidth / 2}px`;
           break;
         case "star_rating":
           html = starSvgJsonToHtml(STAR_RATING_ELEMENT, child);

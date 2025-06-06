@@ -15,7 +15,7 @@ export const shapeJsonToHtml = async (json) => {
     cornerRadiusTopRight,
     cornerRadiusBottomLeft,
     cornerRadiusBottomRight,
-    alpha,
+    alpha = 0,
     overlayFill,
     gradient,
     shadowColor,
@@ -33,6 +33,9 @@ export const shapeJsonToHtml = async (json) => {
     imageHeight,
     shadowEnabled,
     elementType,
+    rotation,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
   } = json;
 
   const svgSrc = svgElement.svgString
@@ -45,10 +48,9 @@ export const shapeJsonToHtml = async (json) => {
 
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
-          shadowColor,
-          shadowOpacity
-        )}`
+      ? `${adjustedShadowOffsetX}px ${adjustedShadowOffsetY}px ${
+          shadowBlur / 2
+        }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";
   const radius = `${cornerRadiusTopLeft}px 
                       ${cornerRadiusTopRight}px 
@@ -110,7 +112,7 @@ export const shapeJsonToHtml = async (json) => {
     overflow: "hidden",
     position: "relative",
     "border-radius": `${radius}`,
-    "box-shadow": `${shadow}`,
+    filter: `drop-shadow(${shadow})`,
     opacity: `${opacity}`,
   };
 
