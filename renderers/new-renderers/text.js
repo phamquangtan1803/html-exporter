@@ -75,15 +75,20 @@ export const textJsonToHtml = (json) => {
     shadowOffsetY = 0,
     opacity = 1,
     fontFamily = "inherit",
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
   } = json;
 
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
-      ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
-          shadowColor,
-          shadowOpacity
-        )}`
+      ? `${adjustedShadowOffsetX}px ${adjustedShadowOffsetY}px ${
+          shadowBlur / 2
+        }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
       : "none";
+  const radius = `${cornerRadiusTopLeft}px 
+                      ${cornerRadiusTopRight}px 
+                      ${cornerRadiusBottomRight}px 
+                      ${cornerRadiusBottomLeft}px`;
   const topAdjust = (-padding.vertical - strokeBgWidth).toString();
   const leftAdjust = (-padding.horizontal - strokeBgWidth).toString();
   console.log("topAdjust", topAdjust, "leftAdjust", leftAdjust);
@@ -93,33 +98,42 @@ export const textJsonToHtml = (json) => {
     textDecoration: `${textDecoration}`,
     color: `${textFill}`,
     "font-size": `${fontSize}px`,
-    "text-align": `${align}`,
-    "align-self": mapVerticalAlignToFlex.get(verticalAlign),
     "letter-spacing": `${letterSpacing}px`,
     "line-height": `${lineHeight}`,
-    "border-radius": `${cornerRadiusTopLeft}px 
-                      ${cornerRadiusTopRight}px 
-                      ${cornerRadiusBottomRight}px 
-                      ${cornerRadiusBottomLeft}px`,
-    padding: `${padding.vertical}px ${padding.horizontal}px`,
-    border: `${strokeBgWidth}px solid ${strokeBackground}`,
-    "background-color": `${fill}`,
-    "text-shadow": `${shadow}`,
-    opacity: `${opacity}`,
+    filter: `drop-shadow(${shadow})`,
     "font-family": `'${fontFamily}'`,
-    width: `${
-      !autoFitBackgroundEnabled ? "fit-content" : `-webkit-fill-available`
-    }`,
+    border: `${strokeBgWidth}px solid ${strokeBackground}`,
+    "border-radius": `${radius}`,
+  };
 
-    "box-sizing": "content-box",
+  const alignContainerStyles = {
+    "text-align": `${align}`,
+    width: "100%",
+    height: "fit-content",
+    "background-color": `${autoFitBackgroundEnabled ? "transparent" : fill}`,
+  };
+
+  const textContainerStyles = {
     position: "relative",
+    display: "flex",
+    width: "100%",
+    height: "100%",
     top: `${topAdjust}px`,
     left: `${leftAdjust}px`,
-    width: "fit-content",
-    height: "fit-content",
+    "background-color": `${autoFitBackgroundEnabled ? fill : "transparent"}`,
+    "border-radius": `${radius}`,
+    "align-items": `${mapVerticalAlignToFlex.get(verticalAlign)}`,
+    padding: `${padding.vertical}px ${padding.horizontal}px`,
+    opacity: `${opacity}`,
   };
 
   const cssTextStyles = cssify(textStyles);
+  const cssAlignContainerStyles = cssify(alignContainerStyles);
+  const cssContainerStyles = cssify(textContainerStyles);
 
-  return `<div style="${cssTextStyles}">${text}</div>`;
+  return `<div style="${cssContainerStyles}">
+            <div style="${cssAlignContainerStyles}">
+              <span style="${cssTextStyles}">${text}</span> 
+            </div>
+          </div>`;
 };
