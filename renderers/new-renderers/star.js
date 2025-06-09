@@ -1,7 +1,8 @@
-import { cssify, stretchySvg } from "./base.js";
+import { convertHexToRgba, cssify, stretchySvg } from "./base.js";
 
 export const starSvgJsonToHtml = (svgString, json) => {
   const {
+    id,
     width,
     height,
     fill,
@@ -35,6 +36,10 @@ export const starSvgJsonToHtml = (svgString, json) => {
     `<svg width="${width}" height="${height}" `
   );
 
+  if (id) {
+    svgString = svgString.replace(/<svg/, `<svg id="${id}" `);
+  }
+
   const containerStyle = {
     width: "100%",
     height: "100%",
@@ -44,7 +49,33 @@ export const starSvgJsonToHtml = (svgString, json) => {
     "object-fit": "fill",
   };
 
-  const cssContainerStyle = cssify(containerStyle);
+  const svgStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 0,
+  };
 
-  return `<div style="${cssContainerStyle}">${svgString}</div>`;
+  const overlayStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "mask-image": `url(${`data:image/svg+xml;base64,${btoa(svgString)}`})`,
+    "z-index": 1,
+    "background-color": `${convertHexToRgba(
+      overlayFill || "#fff",
+      overlayFill ? alpha : 0
+    )}`,
+  };
+
+  const cssContainerStyle = cssify(containerStyle);
+  const cssOverlayStyle = cssify(overlayStyle);
+  const cssSvgStyle = cssify(svgStyle);
+
+  svgString = svgString.replace(/<svg/, `<svg style="${cssSvgStyle}" `);
+
+  return `<div style="${cssContainerStyle}">
+            ${svgString}
+            <div style="${cssOverlayStyle}"/></div>
+          </div>`;
 };

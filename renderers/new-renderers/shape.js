@@ -101,6 +101,7 @@ export const shapeJsonToHtml = async (json) => {
     position: "absolute",
     "z-index": 3,
     "border-radius": `${radius}`,
+    "mask-image": `url(${svgSrc})`,
   };
 
   const containerStyle = {
