@@ -222,7 +222,9 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
       `;
 
   const defaultFonts = children
-    .filter((child) => child.fontFamily && child.s3FilePath)
+    .filter(
+      (child) => child.fontFamily && child.s3FilePath && child.type === "text"
+    )
     .reduce((acc, child) => {
       if (!acc.some((font) => font.fontFamily === child.fontFamily)) {
         acc.push({
