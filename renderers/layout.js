@@ -232,6 +232,18 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
     .filter(
       (child) => child.fontFamily && child.s3FilePath && child.type === "text"
     )
+    .concat(
+      children
+        .filter(
+          (child) =>
+            child.valueList &&
+            child.valueList.length > 0 &&
+            child.type === "text"
+        )
+        .map((child) => child.valueList)
+        .flat()
+        .filter((value) => value.fontFamily && value.s3FilePath)
+    )
     .reduce((acc, child) => {
       if (!acc.some((font) => font.fontFamily === child.fontFamily)) {
         acc.push({

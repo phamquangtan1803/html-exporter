@@ -48,7 +48,6 @@ export const getTextTransform = (text, textTransform) => {
 };
 
 export const textJsonToHtml = (json) => {
-  console.log("my Text", json);
   const {
     textTransform = "none",
     textDecoration = "none",
@@ -77,6 +76,7 @@ export const textJsonToHtml = (json) => {
     fontFamily = "inherit",
     adjustedShadowOffsetX,
     adjustedShadowOffsetY,
+    valueList,
   } = json;
 
   const shadow =
@@ -91,17 +91,9 @@ export const textJsonToHtml = (json) => {
                       ${cornerRadiusBottomLeft}px`;
   const topAdjust = (-padding.vertical - strokeBgWidth).toString();
   const leftAdjust = (-padding.horizontal - strokeBgWidth).toString();
-  console.log("topAdjust", topAdjust, "leftAdjust", leftAdjust);
 
   const text = getTextTransform(json.text || "", textTransform);
   const textStyles = {
-    textDecoration: `${textDecoration}`,
-    color: `${textFill}`,
-    "font-size": `${fontSize}px`,
-    "letter-spacing": `${letterSpacing}px`,
-    "line-height": `${lineHeight}`,
-    filter: `drop-shadow(${shadow})`,
-    "font-family": `'${fontFamily}'`,
     border: `${strokeBgWidth}px solid ${strokeBackground}`,
     "border-radius": `${radius}`,
   };
@@ -111,6 +103,13 @@ export const textJsonToHtml = (json) => {
     width: "100%",
     height: "fit-content",
     "background-color": `${autoFitBackgroundEnabled ? "transparent" : fill}`,
+    textDecoration: `${valueList ? "none" : textDecoration}`,
+    color: `${textFill}`,
+    "font-size": `${fontSize}px`,
+    "letter-spacing": `${letterSpacing}px`,
+    "line-height": `${lineHeight}`,
+    filter: `drop-shadow(${shadow})`,
+    "font-family": `'${fontFamily}'`,
   };
 
   const textContainerStyles = {
@@ -125,15 +124,91 @@ export const textJsonToHtml = (json) => {
     "align-items": `${mapVerticalAlignToFlex.get(verticalAlign)}`,
     padding: `${padding.vertical}px ${padding.horizontal}px`,
     opacity: `${opacity}`,
+    border: `${strokeBgWidth}px solid ${strokeBackground}`,
   };
 
   const cssTextStyles = cssify(textStyles);
   const cssAlignContainerStyles = cssify(alignContainerStyles);
   const cssContainerStyles = cssify(textContainerStyles);
 
+  console.log("valueList", valueList);
   return `<div style="${cssContainerStyles}">
             <div style="${cssAlignContainerStyles}">
-              <span style="${cssTextStyles}">${text}</span> 
+              ${
+                valueList && valueList.length > 0
+                  ? valueList
+                      .map(
+                        (
+                          {
+                            text,
+                            fill,
+                            letterSpacing,
+                            lineHeight,
+                            paragraphSpacing,
+                            textDecoration,
+                            fontSize,
+                            fontFamily,
+                          },
+                          index,
+                          arr
+                        ) => {
+                          let startParagraph = "";
+                          let endParagraph = "";
+                          let thisParagraphSpacing = paragraphSpacing || 0;
+                          for (let i = index + 1; i < arr.length; i++) {
+                            if (arr[i].text !== "\n") {
+                              if (i === arr.length - 1) {
+                                thisParagraphSpacing = 0;
+                                break;
+                              }
+                              thisParagraphSpacing = Math.max(
+                                thisParagraphSpacing,
+                                arr[i].paragraphSpacing || 0
+                              );
+                            } else {
+                              break;
+                            }
+                          }
+                          const paragraphStyles = {
+                            "margin-bottom": `${thisParagraphSpacing}px`,
+                          };
+                          const cssParagraphStyles = cssify(paragraphStyles);
+                          if (!index) {
+                            startParagraph = `<p style="${cssParagraphStyles}">`;
+                          }
+                          if (text === "\n") {
+                            endParagraph = `</p><p style="${cssParagraphStyles}">`;
+                          }
+                          if (index === arr.length - 1) {
+                            endParagraph = `</p>`;
+                          }
+                          const richTextStyles = {
+                            color: fill,
+                            "letter-spacing": letterSpacing
+                              ? `${letterSpacing}px`
+                              : undefined,
+                            "line-height": lineHeight
+                              ? `${lineHeight}`
+                              : undefined,
+                            "text-decoration": textDecoration
+                              ? `${textDecoration}`
+                              : undefined,
+                            "font-size": fontSize ? `${fontSize}px` : undefined,
+                            "font-family": fontFamily
+                              ? `'${fontFamily}'`
+                              : undefined,
+                            "white-space": "pre",
+                          };
+                          const cssRichTextStyles = cssify(richTextStyles);
+                          return `${startParagraph}<span style="${cssRichTextStyles}">${getTextTransform(
+                            text,
+                            textTransform
+                          ).replace(/\n/g, "<br />")}</span>${endParagraph}`;
+                        }
+                      )
+                      .join("")
+                  : `<span style="${cssTextStyles}">${text}</span>`
+              }
             </div>
           </div>`;
 };

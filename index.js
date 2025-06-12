@@ -55,9 +55,9 @@ async function fetchAPIData(url) {
 
 async function main(templateSizeId = "a62fdc60b03e4587abe23f0db23cebba") {
   try {
-    // const apiUrl = `https://stg-api.obello.com/template-service/animations/list?template_size_id=${templateSizeId}`;
+    const apiUrl = `https://stg-api.obello.com/template-service/animations/list?template_size_id=${templateSizeId}`;
 
-    const apiUrl = `https://api.obello.xyz/template-service/animations/list?template_size_id=${templateSizeId}`;
+    // const apiUrl = `https://api.obello.xyz/template-service/animations/list?template_size_id=${templateSizeId}`;
     const data = await generateHTML(apiUrl);
     console.log(process.cwd() + "\\output.html");
     fs.writeFileSync(process.cwd() + "\\output.html", data, "utf8");
@@ -73,4 +73,4 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   main("75d59d9d18de4e30b8f8ab847c95cf6a");
 }
 
-main("c3afa3365dfd44e2b047e8f2ad7c1687");
+main("72a82fc8ec9b44f592a853ccf03d426b");
