@@ -234,6 +234,19 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
     )
     .concat(
       children
+        .filter((child) => child.type === "text" && child.richTextArr)
+        .map((child) => child.richTextArr)
+        .filter((line) => line?.length > 0)
+        .flat()
+        .map((line) => line.words)
+        .filter((word) => word?.length > 0)
+        .flat()
+        .map((word) => word.chars)
+        .flat()
+        .filter((char) => char.fontFamily && char.s3FilePath)
+    )
+    .concat(
+      children
         .filter(
           (child) =>
             child.valueList &&

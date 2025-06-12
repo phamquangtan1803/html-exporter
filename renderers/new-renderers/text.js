@@ -47,6 +47,160 @@ export const getTextTransform = (text, textTransform) => {
   }
 };
 
+export const getRichTextByValueList = (valueList) => {
+  return valueList
+    .map(
+      (
+        {
+          text,
+          fill,
+          letterSpacing,
+          lineHeight,
+          paragraphSpacing,
+          textDecoration,
+          fontSize,
+          fontFamily,
+        },
+        index,
+        arr
+      ) => {
+        let startParagraph = "";
+        let endParagraph = "";
+        let thisParagraphSpacing = paragraphSpacing || 0;
+        for (let i = index + 1; i < arr.length; i++) {
+          if (arr[i].text !== "\n") {
+            if (i === arr.length - 1) {
+              thisParagraphSpacing = 0;
+              break;
+            }
+            thisParagraphSpacing = Math.max(
+              thisParagraphSpacing,
+              arr[i].paragraphSpacing || 0
+            );
+          } else {
+            break;
+          }
+        }
+        const paragraphStyles = {
+          "margin-bottom": `${thisParagraphSpacing}px`,
+        };
+        const cssParagraphStyles = cssify(paragraphStyles);
+        if (!index) {
+          startParagraph = `<p style="${cssParagraphStyles}">`;
+        }
+        if (text === "\n") {
+          endParagraph = `</p><p style="${cssParagraphStyles}">`;
+        }
+        if (index === arr.length - 1) {
+          endParagraph = `</p>`;
+        }
+        const richTextStyles = {
+          color: fill,
+          "letter-spacing": letterSpacing ? `${letterSpacing}px` : undefined,
+          "line-height": lineHeight ? `${lineHeight}` : undefined,
+          "text-decoration": textDecoration ? `${textDecoration}` : undefined,
+          "font-size": fontSize ? `${fontSize}px` : undefined,
+          "font-family": fontFamily ? `'${fontFamily}'` : undefined,
+          "white-space": "pre",
+          "text-decoration-color": "black",
+        };
+        const cssRichTextStyles = cssify(richTextStyles);
+        return `${startParagraph}<span style="${cssRichTextStyles}">${text.replace(
+          /\n/g,
+          "<br />"
+        )}</span>${endParagraph}`;
+      }
+    )
+    .join("");
+};
+
+export const getRichText = (
+  richTextArr,
+  fallbackValueList,
+  fallbackText,
+  fallbackTextStyle
+) => {
+  if (!richTextArr && !fallbackValueList) {
+    return `<span style="${fallbackTextStyle}">${fallbackText}</span>`;
+  }
+  if (!richTextArr) {
+    return getRichTextByValueList(fallbackValueList);
+  }
+
+  const result = richTextArr
+    .map((line, index, arr) => {
+      const htmlWords = line.words
+        .map((word) => {
+          const chars = word.chars;
+          const htmlChar = chars
+            .map(
+              ({
+                text,
+                fill,
+                letterSpacing,
+                lineHeight,
+                textDecoration,
+                fontSize,
+                fontFamily,
+              }) => {
+                const richTextStyles = {
+                  color: fill,
+                  "letter-spacing": letterSpacing
+                    ? `${letterSpacing}px`
+                    : undefined,
+                  "line-height": lineHeight ? `${lineHeight}` : undefined,
+                  "text-decoration": textDecoration
+                    ? `${textDecoration}`
+                    : undefined,
+                  "font-size": fontSize ? `${fontSize}px` : undefined,
+                  "font-family": fontFamily ? `'${fontFamily}'` : undefined,
+                  "white-space": "pre",
+                  "text-decoration-color": "black",
+                };
+                const cssRichTextStyles = cssify(richTextStyles);
+                return `<span style="${cssRichTextStyles}">${text.replace(
+                  /\n/g,
+                  "<br />"
+                )}</span>`;
+              }
+            )
+            .join("");
+          return htmlChar;
+        })
+        .join("");
+
+      const paragraphSpacing =
+        index < arr.length - 1
+          ? line.words.reduce((acc, word) => {
+              const chars = word.chars;
+              return Math.max(
+                acc,
+                ...chars.map((char) => char.paragraphSpacing || 0)
+              );
+            }, 0)
+          : 0;
+
+      const paragraphStyles = {
+        "margin-bottom": `${paragraphSpacing}px`,
+      };
+
+      const cssParagraphStyles = cssify(paragraphStyles);
+      return `<p style="${cssParagraphStyles}">${htmlWords}</p>`;
+    })
+    .join("");
+
+  console.log(
+    "richText chars",
+    richTextArr
+      .map((line) => line.words)
+      .filter((word) => word?.length > 0)
+      .flat()
+      .map((word) => word.chars)
+      .flat()
+  );
+  return result;
+};
+
 export const textJsonToHtml = (json) => {
   const {
     textTransform = "none",
@@ -77,6 +231,7 @@ export const textJsonToHtml = (json) => {
     adjustedShadowOffsetX,
     adjustedShadowOffsetY,
     valueList,
+    richTextArr,
   } = json;
 
   const shadow =
@@ -103,7 +258,9 @@ export const textJsonToHtml = (json) => {
     width: "100%",
     height: "fit-content",
     "background-color": `${autoFitBackgroundEnabled ? "transparent" : fill}`,
-    textDecoration: `${valueList ? "none" : textDecoration}`,
+    textDecoration: `${
+      richTextArr?.length > 0 || valueList?.length > 0 ? "none" : textDecoration
+    }`,
     color: `${textFill}`,
     "font-size": `${fontSize}px`,
     "letter-spacing": `${letterSpacing}px`,
@@ -131,84 +288,9 @@ export const textJsonToHtml = (json) => {
   const cssAlignContainerStyles = cssify(alignContainerStyles);
   const cssContainerStyles = cssify(textContainerStyles);
 
-  console.log("valueList", valueList);
   return `<div style="${cssContainerStyles}">
             <div style="${cssAlignContainerStyles}">
-              ${
-                valueList && valueList.length > 0
-                  ? valueList
-                      .map(
-                        (
-                          {
-                            text,
-                            fill,
-                            letterSpacing,
-                            lineHeight,
-                            paragraphSpacing,
-                            textDecoration,
-                            fontSize,
-                            fontFamily,
-                          },
-                          index,
-                          arr
-                        ) => {
-                          let startParagraph = "";
-                          let endParagraph = "";
-                          let thisParagraphSpacing = paragraphSpacing || 0;
-                          for (let i = index + 1; i < arr.length; i++) {
-                            if (arr[i].text !== "\n") {
-                              if (i === arr.length - 1) {
-                                thisParagraphSpacing = 0;
-                                break;
-                              }
-                              thisParagraphSpacing = Math.max(
-                                thisParagraphSpacing,
-                                arr[i].paragraphSpacing || 0
-                              );
-                            } else {
-                              break;
-                            }
-                          }
-                          const paragraphStyles = {
-                            "margin-bottom": `${thisParagraphSpacing}px`,
-                          };
-                          const cssParagraphStyles = cssify(paragraphStyles);
-                          if (!index) {
-                            startParagraph = `<p style="${cssParagraphStyles}">`;
-                          }
-                          if (text === "\n") {
-                            endParagraph = `</p><p style="${cssParagraphStyles}">`;
-                          }
-                          if (index === arr.length - 1) {
-                            endParagraph = `</p>`;
-                          }
-                          const richTextStyles = {
-                            color: fill,
-                            "letter-spacing": letterSpacing
-                              ? `${letterSpacing}px`
-                              : undefined,
-                            "line-height": lineHeight
-                              ? `${lineHeight}`
-                              : undefined,
-                            "text-decoration": textDecoration
-                              ? `${textDecoration}`
-                              : undefined,
-                            "font-size": fontSize ? `${fontSize}px` : undefined,
-                            "font-family": fontFamily
-                              ? `'${fontFamily}'`
-                              : undefined,
-                            "white-space": "pre",
-                          };
-                          const cssRichTextStyles = cssify(richTextStyles);
-                          return `${startParagraph}<span style="${cssRichTextStyles}">${getTextTransform(
-                            text,
-                            textTransform
-                          ).replace(/\n/g, "<br />")}</span>${endParagraph}`;
-                        }
-                      )
-                      .join("")
-                  : `<span style="${cssTextStyles}">${text}</span>`
-              }
+              ${getRichText(richTextArr, valueList, cssTextStyles, text)}
             </div>
           </div>`;
 };
