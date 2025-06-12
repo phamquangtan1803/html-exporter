@@ -42,10 +42,9 @@ function getResetCSS() {
 async function convertChildrenToHtml(children) {
   const htmlElements = [];
 
-  console.log("Converting children to HTML...", children);
-
   const promises = children.map(async (child) => {
     const {
+      id,
       elementType,
       type,
       x = 0,
@@ -59,6 +58,7 @@ async function convertChildrenToHtml(children) {
       shadowEnabled = false,
       shadowOffsetX = 0,
       shadowOffsetY = 0,
+      groupChildren = [],
     } = child;
 
     let calculated = {
@@ -83,7 +83,7 @@ async function convertChildrenToHtml(children) {
         shadowOffsetY * Math.cos(angleInRadians);
     }
 
-    let html = `<div></div>`;
+    let html = "";
     child = {
       ...child,
       strokeBgWidth: strokeBgWidth / 2,
@@ -118,64 +118,59 @@ async function convertChildrenToHtml(children) {
       }
     }
 
-    // if (type === "text") {
-    //   html = convertTextJsonToHtml(child, rootCoordinates);
-    // } else {
-    //   switch (elementType) {
-    //     case "logo":
-    //       html = await convertLogoJsonToHtml(child, rootCoordinates);
-    //       break;
-    //     case "line_outline":
-    //     case "line":
-    //       html = await convertLineJsonToHtml(child, rootCoordinates);
-    //       break;
-    //     case "star_rating":
-    //       html = await convertStarRatingJsonToHtml(child, rootCoordinates);
-    //       break;
-    //     case "graphicShape":
-    //     case "complex_svg":
-    //       html = await convertShapeJsonToHtml(child, rootCoordinates);
-    //       break;
-    //     case "image":
-    //     case "svg":
-    //       html = await convertImgJsonToHtml(child, rootCoordinates);
-    //       break;
-    //     default:
-    //       console.warn(`Unknown type or elementType: ${type || elementType}`);
-    //   }
-    // }
-
-    if (html) {
-      htmlElements.push({
-        html,
-        x,
-        y,
-        width,
-        height,
-        rotation: calculated.rotation,
-        transformOrigin: calculated.transformOrigin,
-        padding,
-        strokeBgWidth: strokeBgWidth / 2,
-        index: index,
-      });
-    }
+    htmlElements.push({
+      id,
+      html,
+      x,
+      y,
+      width,
+      height,
+      rotation: calculated.rotation,
+      transformOrigin: calculated.transformOrigin,
+      padding,
+      strokeBgWidth: strokeBgWidth / 2,
+      index: index,
+      groupChildren,
+    });
   });
 
   await Promise.all(promises);
   return htmlElements;
 }
 
-export async function generateLayoutHtml({ isExporting = false, page }) {
-  const { children, width, height, background } = page;
-  const baseStyle = getResetCSS();
+export const joinGroupElement = (elementList) => {
+  const groupList = [];
+  const listElementInGroup = [];
 
-  const htmlElements = await convertChildrenToHtml(children);
+  elementList.forEach((element) => {
+    if (element.type === "group") {
+      listElementInGroup.push(...element.elementIds);
+
+      const groupChildren = element.elementIds.map((id) => {
+        const children = elementList.filter((item) => item.id === id)[0];
+        return children;
+      });
+      groupList.push({ ...element, groupChildren: groupChildren });
+    }
+  });
+
+  const newElementList = elementList
+    .filter((element) => !listElementInGroup.includes(element.id))
+    .filter((element) => element.type != "group");
+  newElementList.push(...groupList);
+
+  return newElementList;
+};
+
+export async function generateChildrenHtml(children) {
+  const groupedChildren = joinGroupElement(children);
+  const htmlElements = await convertChildrenToHtml(groupedChildren);
 
   htmlElements.sort((a, b) => a.index - b.index);
 
-  const elementsHtml = htmlElements
-    .map(
-      ({
+  const elementsHtml = await Promise.all(
+    htmlElements.map(
+      async ({
         x,
         y,
         width,
@@ -186,6 +181,7 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         padding,
         strokeBgWidth,
         html,
+        groupChildren = [],
       }) => `
       <div style="
         position: absolute;
@@ -199,11 +195,22 @@ export async function generateLayoutHtml({ isExporting = false, page }) {
         display: flex;
         box-sizing: content-box;
       ">
-        ${html}
+        ${html || (await generateChildrenHtml(groupChildren))}
       </div>
     `
     )
-    .join("");
+  );
+
+  return elementsHtml.join("");
+}
+
+export async function generateLayoutHtml({ isExporting = false, page }) {
+  const { children, width, height, background } = page;
+  const baseStyle = getResetCSS();
+
+  console.log("length of children", children.length);
+
+  const elementsHtml = await generateChildrenHtml(children);
 
   const html = `
       <div
