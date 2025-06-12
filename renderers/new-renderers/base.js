@@ -68,9 +68,10 @@ export const stretchySvg = (svgContent) => {
 };
 
 export const applyFillColor = (node, fillColor) => {
-  if (!fillColor || fillColor === "transparent" || !node || !node.attributes) {
+  if (!node || !node.attributes) {
     return;
   }
+  fillColor = fillColor ?? "transparent";
 
   const transparentColors = new Set([
     "none",

@@ -120,10 +120,10 @@ export const getRichText = (
   fallbackText,
   fallbackTextStyle
 ) => {
-  if (!richTextArr && !fallbackValueList) {
+  if (richTextArr?.length <= 0 && fallbackValueList?.length <= 0) {
     return `<span style="${fallbackTextStyle}">${fallbackText}</span>`;
   }
-  if (!richTextArr) {
+  if (richTextArr?.length <= 0) {
     return getRichTextByValueList(fallbackValueList);
   }
 
@@ -290,7 +290,7 @@ export const textJsonToHtml = (json) => {
 
   return `<div style="${cssContainerStyles}">
             <div style="${cssAlignContainerStyles}">
-              ${getRichText(richTextArr, valueList, cssTextStyles, text)}
+              ${getRichText(richTextArr, valueList, text, cssTextStyles)}
             </div>
           </div>`;
 };
