@@ -150,6 +150,46 @@ export const changeSvgColor = async (svgContent, fillColor) => {
   return `data:image/svg+xml;base64,${btoa(stringify(svgContent))}`;
 };
 
+export const changeSvgColorAndStroke = async (
+  svgString,
+  fillColor,
+  strokeColor,
+  strokeWidth,
+  containerWidth,
+  containerHeight,
+  svgElement
+) => {
+  svgString = await parse(svgString);
+  applyFillColor(svgString, fillColor);
+  console.log("svgContent before color change", svgString);
+
+  const [viewBoxX, viewBoxY, viewBoxWidth, viewBoxHeight] =
+    svgString.attributes.viewBox.split(" ").map(Number);
+  const xRatio = viewBoxWidth / containerWidth;
+  const yRatio = viewBoxHeight / containerHeight;
+
+  console.log("xRatio", xRatio, "yRatio", yRatio);
+
+  console.log("svgString before stroke change", svgString);
+  if (strokeColor) {
+    svgString.children.forEach((child) => {
+      if (child.attributes) {
+        child.attributes.stroke = strokeColor;
+        child.attributes["stroke-width"] = `${strokeWidth * xRatio}`;
+      }
+      console.log("child", child);
+    });
+    svgString.attributes.viewBox = `${viewBoxX - (strokeWidth * xRatio) / 2} ${
+      viewBoxY - (strokeWidth * yRatio) / 2
+    } ${viewBoxWidth + strokeWidth * xRatio} ${
+      viewBoxHeight + strokeWidth * yRatio
+    }`;
+  }
+  console.log("svgString after stroke change", svgString);
+  console.log("svgContent", stringify(svgString));
+  return `data:image/svg+xml;base64,${btoa(stringify(svgString))}`;
+};
+
 export const changeSvgColorFromSrc = async (src, fill) => {
   const response = await fetch(src);
   let svgContent = await response.text();

@@ -1,5 +1,6 @@
 import {
   changeSvgColor,
+  changeSvgColorAndStroke,
   convertHexToRgba,
   cssify,
   getOverlayElement,
@@ -37,11 +38,29 @@ export const shapeJsonToHtml = async (json) => {
     rotation,
     adjustedShadowOffsetX,
     adjustedShadowOffsetY,
+    width,
+    height,
   } = json;
 
   const svgSrc = svgElement.svgString
-    ? await changeSvgColor(stretchySvg(svgElement.svgString), fill)
+    ? await changeSvgColorAndStroke(
+        stretchySvg(svgElement.svgString),
+        fill,
+        stroke,
+        strokeWidth,
+        width,
+        height,
+        svgElement
+      )
     : "";
+  // const svgBorder = svgElement.svgString
+  //   ? await changeSvgColorAndStroke(
+  //       stretchySvg(svgElement.svgString),
+  //       "transparent",
+  //       stroke,
+  //       strokeWidth
+  //     )
+  //   : "";
   const imgSrc = src;
   const shapeType = svgElement.children?.[0].type;
 
@@ -92,7 +111,7 @@ export const shapeJsonToHtml = async (json) => {
     height: "100%",
     position: "absolute",
     "z-index": 2,
-    border: `${strokeWidth}px solid ${stroke}`,
+    // border: `${strokeWidth}px solid ${stroke}`,
   };
 
   const overlayStyle = {
@@ -128,7 +147,7 @@ export const shapeJsonToHtml = async (json) => {
               <img style="${cssImgStyle}" src="${imgSrc}" />
             </div>`
             }
-            <div style="${cssBorderStyle}"></div>
+
             ${getOverlayElement(gradient, overlayStyle, overlayFill, alpha)}
         </div>`;
 };
