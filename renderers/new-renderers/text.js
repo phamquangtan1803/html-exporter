@@ -96,7 +96,9 @@ export const getRichTextByValueList = (valueList) => {
         }
         const richTextStyles = {
           color: fill,
-          "letter-spacing": letterSpacing ? `${letterSpacing}px` : undefined,
+          "letter-spacing": letterSpacing
+            ? `${(letterSpacing / 100) * fontSize}px`
+            : undefined,
           "line-height": lineHeight ? `${lineHeight}` : undefined,
           "text-decoration": textDecoration ? `${textDecoration}` : undefined,
           "font-size": fontSize ? `${fontSize}px` : undefined,
@@ -115,6 +117,7 @@ export const getRichTextByValueList = (valueList) => {
 };
 
 export const getRichText = (
+  elementAttributes,
   richTextArr,
   fallbackValueList,
   fallbackText,
@@ -132,31 +135,28 @@ export const getRichText = (
       const htmlWords = line.words
         .map((word) => {
           const chars = word.chars;
-          const htmlChar = chars
+          const htmlChars = chars
             .map(
               ({
                 text,
                 fill,
                 letterSpacing,
                 lineHeight,
-                textDecoration,
                 fontSize,
                 fontFamily,
               }) => {
                 const richTextStyles = {
                   color: fill,
                   "letter-spacing": letterSpacing
-                    ? `${letterSpacing}px`
+                    ? `${(letterSpacing / 100) * fontSize}px`
                     : undefined,
                   "line-height": lineHeight ? `${lineHeight}` : undefined,
-                  "text-decoration": textDecoration
-                    ? `${textDecoration}`
-                    : undefined,
                   "font-size": fontSize ? `${fontSize}px` : undefined,
                   "font-family": fontFamily ? `'${fontFamily}'` : undefined,
                   "white-space": "pre",
                   "text-decoration-color": "black",
                 };
+
                 const cssRichTextStyles = cssify(richTextStyles);
                 return `<span style="${cssRichTextStyles}">${text.replace(
                   /\n/g,
@@ -165,9 +165,150 @@ export const getRichText = (
               }
             )
             .join("");
-          return htmlChar;
+          return htmlChars;
         })
         .join("");
+
+      const largestFontSize = Math.max(
+        ...line.words.map((word) =>
+          Math.max(...word.chars.map((char) => char.fontSize || 0))
+        )
+      );
+
+      const firstFontSize = line.words[0]?.chars[0]?.fontSize || 16;
+
+      const calculatedAdjust = line.words
+        .map((word) => word.chars.flat())
+        .flat()
+        .map((char, index, arr) => {
+          // console.log("abc", char);
+          console.log(
+            "arr",
+            arr[index - 1]?.adjustedX,
+            "index",
+            index,
+            "fontSize",
+            char.fontSize,
+            "arr[index - 1].fontSize",
+            arr[index - 1]?.fontSize
+          );
+          let adjustedX = arr[index - 1]?.adjustedX ?? 0;
+          if (
+            index &&
+            char.fontSize !== arr[index - 1].fontSize &&
+            arr[index + 1]?.fontSize &&
+            arr[index + 1]?.fontSize === char.fontSize
+          ) {
+            adjustedX = adjustedX + -1;
+          }
+          char.adjustedX = adjustedX;
+          return { ...char };
+        });
+
+      let adjustIndex = 0;
+      const calculatedWords = line.words.map((word) => {
+        const calculatedChars = word.chars.map((c) => {
+          c.adjustedX = calculatedAdjust[adjustIndex].adjustedX;
+          adjustIndex++;
+          return c;
+        });
+        return {
+          ...word,
+          chars: calculatedChars,
+        };
+      });
+
+      const htmlDecorations = calculatedWords
+        .map((word, wordIndex) => {
+          const chars = word.chars;
+
+          const htmlCharsDecoration = chars
+            .map(
+              ({
+                text,
+                textDecoration,
+                fontSize,
+                metrics,
+                width,
+                adjustedX,
+              }) => {
+                // calculate for text decoration
+                const isSpace = (text = "") => {
+                  return `${text}`?.replace(/\u00A0/g, " ") === " ";
+                };
+                const isAdjustSpace =
+                  isSpace(word?.text) &&
+                  elementAttributes.align === "justify" &&
+                  !line.isBreakLine;
+                if (!text || text === "") return "";
+                const isBreakChar = text === "\n";
+                const offsetLineHeight = isBreakChar
+                  ? 0
+                  : line.height -
+                    fontSize -
+                    (line.fontSize - fontSize) * 0.5 -
+                    line.alphabeticBaseline +
+                    metrics?.alphabeticBaseline;
+                const lineOffsetY = (line.height - line.fontSize) * 0.5 || 0;
+                const charY = Math.max(offsetLineHeight - lineOffsetY, 0);
+                const totalWordWidth = line.word?.reduce(
+                  (total, word) =>
+                    total + (!isSpace(word?.text) ? word?.width : 0),
+                  0
+                );
+                const totalSpaceNumber =
+                  line.word?.filter((word) => !!isSpace(word?.text))?.length ||
+                  1;
+                const spacing =
+                  (elementAttributes.elementWidth - totalWordWidth) /
+                  totalSpaceNumber;
+                // --------
+
+                const textDecorationParams = {
+                  x: adjustedX,
+                  y: 0,
+                  textDecoration: textDecoration,
+                  fontSize: line.fontSize,
+                  width: isAdjustSpace ? spacing : width + 0.25,
+                  color: line.color,
+                  charFontSize: fontSize,
+                  underlineY: line.height - charY,
+                  strikeThroughY: (largestFontSize - fontSize) / 4,
+                };
+
+                const textDecorationHtml =
+                  renderTextDecoration(textDecorationParams);
+
+                return {
+                  textUnderlineHtml: textDecorationHtml?.underlineHtml || "",
+                  textStrikeThroughHtml:
+                    textDecorationHtml?.strikeThroughHtml || "",
+                };
+              }
+            )
+            .reduce(
+              (acc, { textUnderlineHtml, textStrikeThroughHtml }) => {
+                return {
+                  textUnderlineHtml: acc.textUnderlineHtml + textUnderlineHtml,
+                  textStrikeThroughHtml:
+                    acc.textStrikeThroughHtml + textStrikeThroughHtml,
+                };
+              },
+              { textUnderlineHtml: "", textStrikeThroughHtml: "" }
+            );
+
+          return htmlCharsDecoration;
+        })
+        .reduce(
+          (acc, { textUnderlineHtml, textStrikeThroughHtml }) => {
+            return {
+              textUnderlineHtml: acc.textUnderlineHtml + textUnderlineHtml,
+              textStrikeThroughHtml:
+                acc.textStrikeThroughHtml + textStrikeThroughHtml,
+            };
+          },
+          { textUnderlineHtml: "", textStrikeThroughHtml: "" }
+        );
 
       const paragraphSpacing =
         index < arr.length - 1
@@ -184,21 +325,120 @@ export const getRichText = (
         "margin-bottom": `${paragraphSpacing}px`,
       };
 
+      const decorationStyles = {
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        "z-index": 1,
+        pointerEvents: "none",
+      };
+
+      const containerStyles = {
+        position: "relative",
+        width: "100%",
+        height: "fit-content",
+      };
+
       const cssParagraphStyles = cssify(paragraphStyles);
-      return `<p style="${cssParagraphStyles}">${htmlWords}</p>`;
+      const cssDecorationStyles = cssify(decorationStyles);
+      const cssContainerStyles = cssify(containerStyles);
+
+      return `<div style="${cssContainerStyles}">
+                <div style="${cssDecorationStyles}">
+                  ${htmlDecorations.textStrikeThroughHtml}
+                </div>
+                <div style="${cssDecorationStyles}">
+                  ${htmlDecorations.textUnderlineHtml}
+                </div>
+                <p style="${cssParagraphStyles}">${htmlWords}</p>
+              </div>`;
     })
     .join("");
 
-  console.log(
-    "richText chars",
-    richTextArr
-      .map((line) => line.words)
-      .filter((word) => word?.length > 0)
-      .flat()
-      .map((word) => word.chars)
-      .flat()
-  );
+  // console.log(
+  //   "richText chars",
+  //   richTextArr
+  //     .map((line) => line.words)
+  //     .filter((word) => word?.length > 0)
+  //     .flat()
+  //     .map((word) => word.chars)
+  //     .flat()
+  // );
   return result;
+};
+
+export const renderTextDecoration = ({
+  x,
+  y,
+  textDecoration,
+  fontSize,
+  charFontSize,
+  width,
+  color,
+  underlineY,
+  strikeThroughY,
+}) => {
+  try {
+    const shouldUnderline = `${textDecoration}`.includes("underline");
+    const shouldStrikeThrough = `${textDecoration}`.includes("line-through");
+    const strikeStrokeWidth = Math.ceil(charFontSize / 15);
+    const underlineStrokeWidth = Math.ceil(fontSize / 15);
+    const underlineContainerStyle = {
+      position: "relative",
+      top: `${underlineStrokeWidth / 2}px`,
+      left: `${x}px`,
+      width: `${width}px`,
+      height: `${underlineStrokeWidth}px`,
+      display: "inline-block",
+      "vertical-align": "bottom",
+    };
+    const strikeThroughContainerStyle = {
+      position: "relative",
+      top: `${strikeThroughY}px`,
+      left: `${x}px`,
+      width: `${width}px`,
+      height: `${strikeStrokeWidth}px`,
+      display: "inline-block",
+      "vertical-align": "middle",
+    };
+    const cssUnderlineContainerStyle = cssify(underlineContainerStyle);
+    const cssStrikeThroughContainerStyle = cssify(strikeThroughContainerStyle);
+
+    const underlineDecoration = `<svg style="${cssUnderlineContainerStyle}" 
+                                      fill="${color || "#000000"}" 
+                                        stroke="${color || "#000000"}" 
+                                        xmlns="http://www.w3.org/2000/svg">
+                                      <line 
+                                        x1="0" 
+                                        y1="${underlineStrokeWidth / 2}px" 
+                                        x2="${width + 1}" 
+                                        y2="${underlineStrokeWidth / 2}px"
+                                        stroke-width="${underlineStrokeWidth}px"/>
+                                    </svg>`;
+    const strikeThroughDecoration = `<svg style="${cssStrikeThroughContainerStyle}"
+                                        fill="${color || "#000000"}" 
+                                        stroke="${color || "#000000"}" 
+                                        xmlns="http://www.w3.org/2000/svg">
+                                      <line 
+                                        x1="0" 
+                                        y1="${strikeStrokeWidth / 2}px" 
+                                        x2="${width + 1}" 
+                                        y2="${strikeStrokeWidth / 2}px"
+                                        stroke-width="${strikeStrokeWidth}px"/>
+                                    </svg>`;
+
+    return {
+      underlineHtml: shouldUnderline
+        ? underlineDecoration
+        : `<div style="${cssUnderlineContainerStyle}"></div>`,
+      strikeThroughHtml: shouldStrikeThrough
+        ? strikeThroughDecoration
+        : `<div style="${cssStrikeThroughContainerStyle}"></div>`,
+    };
+  } catch (error) {
+    console.error(">>>> renderTextDecoration: ", error);
+    return null;
+  }
 };
 
 export const textJsonToHtml = (json) => {
@@ -232,6 +472,7 @@ export const textJsonToHtml = (json) => {
     adjustedShadowOffsetY,
     valueList,
     richTextArr,
+    width = 0,
   } = json;
 
   const shadow =
@@ -263,7 +504,9 @@ export const textJsonToHtml = (json) => {
     }`,
     color: `${textFill}`,
     "font-size": `${fontSize}px`,
-    "letter-spacing": `${letterSpacing}px`,
+    "letter-spacing": letterSpacing
+      ? `${(letterSpacing / 100) * fontSize}px`
+      : undefined,
     "line-height": `${lineHeight}`,
     filter: `drop-shadow(${shadow})`,
     "font-family": `'${fontFamily}'`,
@@ -290,7 +533,13 @@ export const textJsonToHtml = (json) => {
 
   return `<div style="${cssContainerStyles}">
             <div style="${cssAlignContainerStyles}">
-              ${getRichText(richTextArr, valueList, text, cssTextStyles)}
+              ${getRichText(
+                { elementWidth: width, align },
+                richTextArr,
+                valueList,
+                text,
+                cssTextStyles
+              )}
             </div>
           </div>`;
 };
