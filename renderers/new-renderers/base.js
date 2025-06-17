@@ -129,6 +129,9 @@ export const applyFillColor = (node, fillColor) => {
     }
 
     node.attributes.style = style;
+  } else {
+    node.attributes.fill = fillColor;
+    node.attributes.stroke = fillColor;
   }
 
   // Process gradient stops
@@ -168,9 +171,6 @@ export const changeSvgColorAndStroke = async (
   const xRatio = viewBoxWidth / containerWidth;
   const yRatio = viewBoxHeight / containerHeight;
 
-  console.log("xRatio", xRatio, "yRatio", yRatio);
-
-  console.log("svgString before stroke change", svgString);
   if (strokeColor) {
     svgString.children.forEach((child) => {
       if (child.attributes) {
@@ -185,8 +185,6 @@ export const changeSvgColorAndStroke = async (
       viewBoxHeight + strokeWidth * yRatio
     }`;
   }
-  console.log("svgString after stroke change", svgString);
-  console.log("svgContent", stringify(svgString));
   return `data:image/svg+xml;base64,${btoa(stringify(svgString))}`;
 };
 
