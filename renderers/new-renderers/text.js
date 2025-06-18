@@ -47,14 +47,14 @@ export const getTextTransform = (text, textTransform) => {
   }
 };
 
-export const getTextBackground = ({
+export const renderTextPath = ({
   richTextArr,
   radius,
   horizontalAlign,
   verticalAlign,
   elementWidth,
   elementHeight,
-  bgFill = "transparent",
+  adjust = 0,
 }) => {
   const isCenter = horizontalAlign === "center";
   const isStart =
@@ -77,27 +77,29 @@ export const getTextBackground = ({
   textBackgroundPath += `M ${startX} ${startY} \n`;
   textBackgroundPath += `h ${richTextArr[0].width - 2 * radius} \n`;
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${radius} ${radius} \n`;
+  textBackgroundPath += `v ${richTextArr[0].height - 2 * radius} \n`;
 
   for (let i = 1; i < richTextArr.length; i++) {
     let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
-    textBackgroundPath += `v ${richTextArr[i].height - 2 * radius} \n`;
-    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
-      isLargerThanPrevious ? "0" : "1"
-    }, ${radius * (isLargerThanPrevious ? 1 : -1)} ${radius} \n`;
+    textBackgroundPath += !isEnd
+      ? `a ${radius} ${radius}, 0, 0, ${isLargerThanPrevious ? "0" : "1"}, ${
+          radius * (isLargerThanPrevious ? 1 : -1)
+        } ${radius} \n`
+      : "";
     textBackgroundPath += `h ${
       ((richTextArr[i].width - richTextArr[i - 1].width) *
         (isCenter ? 0.5 : 1) -
         (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
       !isEnd
     }\n`;
-    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
-      !isLargerThanPrevious ? "0" : "1"
-    }, ${radius * (isLargerThanPrevious ? 1 : -1)} ${radius} \n`;
+    textBackgroundPath += !isEnd
+      ? `a ${radius} ${radius}, 0, 0, ${!isLargerThanPrevious ? "0" : "1"}, ${
+          radius * (isLargerThanPrevious ? 1 : -1)
+        } ${radius} \n`
+      : "";
+    textBackgroundPath += `v ${richTextArr[i].height - 2 * radius * !isEnd} \n`;
   }
 
-  textBackgroundPath += `v ${
-    richTextArr[richTextArr.length - 1].height - 2 * radius
-  } \n`;
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${-radius} ${radius} \n`;
   textBackgroundPath += `h ${-(
     richTextArr[richTextArr.length - 1].width -
@@ -111,26 +113,59 @@ export const getTextBackground = ({
 
   for (let i = richTextArr.length - 1; i > 0; i--) {
     let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
-    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
-      !isLargerThanPrevious ? "0" : "1"
-    }, ${radius * (!isLargerThanPrevious ? -1 : 1)} ${-radius} \n`;
+    textBackgroundPath += !isStart
+      ? `a ${radius} ${radius}, 0, 0, ${!isLargerThanPrevious ? "0" : "1"}, ${
+          radius * (!isLargerThanPrevious ? -1 : 1)
+        } ${-radius} \n`
+      : "";
     textBackgroundPath += `h ${
       ((richTextArr[i].width - richTextArr[i - 1].width) *
         (isCenter ? 0.5 : 1) -
         (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
       !isStart
     }\n`;
-    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
-      isLargerThanPrevious ? "0" : "1"
-    }, ${radius * (!isLargerThanPrevious ? -1 : 1)} ${-radius} \n`;
-    textBackgroundPath += `v ${-(richTextArr[i - 1].height - 2 * radius)} \n`;
+    textBackgroundPath += !isStart
+      ? `a ${radius} ${radius}, 0, 0, ${isLargerThanPrevious ? "0" : "1"}, ${
+          radius * (!isLargerThanPrevious ? -1 : 1)
+        } ${-radius} \n`
+      : "";
+    textBackgroundPath += `v ${-(
+      richTextArr[i - 1].height -
+      2 * radius * !isStart
+    )} \n`;
   }
 
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${radius} ${-radius} \n`;
   textBackgroundPath += "Z\n";
+  return textBackgroundPath;
+};
 
-  return `<svg width="${elementWidth}" height="${elementHeight}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${elementWidth} ${elementHeight}">
-    <path d="${textBackgroundPath}" fill="${bgFill}" />
+export const getTextBackground = ({
+  richTextArr,
+  radius,
+  horizontalAlign,
+  verticalAlign,
+  elementWidth,
+  elementHeight,
+  bgFill = "transparent",
+  stroke = "transparent",
+  strokeWidth = 0,
+}) => {
+  const fillPath = renderTextPath({
+    richTextArr,
+    radius,
+    horizontalAlign,
+    verticalAlign,
+    elementWidth,
+    elementHeight,
+  });
+
+  return `<svg width="${elementWidth + strokeWidth * 2}" height="${
+    elementHeight + strokeWidth * 2
+  }" xmlns="http://www.w3.org/2000/svg" viewBox="${-strokeWidth / 2} ${
+    -strokeWidth / 2
+  } ${elementWidth + strokeWidth * 2} ${elementHeight + strokeWidth * 2}">
+    <path d="${fillPath}" fill="${bgFill}"  />
   </svg>`;
 };
 
@@ -317,7 +352,6 @@ export const getRichText = (
                   isSpace(word?.text) &&
                   elementAttributes.align === "justify" &&
                   !line.isBreakLine;
-                if (!text || text === "") return "";
                 const isBreakChar = text === "\n";
                 const offsetLineHeight = isBreakChar
                   ? 0
@@ -562,6 +596,8 @@ export const textJsonToHtml = (json) => {
     elementWidth: width,
     elementHeight: height,
     bgFill: autoFitBackgroundEnabled ? "transparent" : fill,
+    stroke: strokeBackground,
+    strokeWidth: strokeBgWidth,
   });
 
   const shadow =
@@ -605,23 +641,25 @@ export const textJsonToHtml = (json) => {
     display: "flex",
     width: "100%",
     height: "100%",
-    top: `${topAdjust}px`,
-    left: `${leftAdjust}px`,
-    "background-color": `${autoFitBackgroundEnabled ? fill : "transparent"}`,
-    "border-radius": `${radius}`,
+    top: `${0}px`,
+    left: `${0}px`,
     "align-items": `${mapVerticalAlignToFlex.get(verticalAlign)}`,
     padding: `${padding.vertical}px ${padding.horizontal}px`,
     opacity: `${opacity}`,
-    border: `${strokeBgWidth}px solid ${strokeBackground}`,
   };
 
   const bgContainerStyle = {
     position: "absolute",
-    top: "0",
-    left: "0",
+    top: `${topAdjust}px`,
+    left: `${leftAdjust}px`,
     width: "100%",
     height: "100%",
-    "z-index": 0,
+    "z-index": -1,
+    "background-color": `${autoFitBackgroundEnabled ? fill : "transparent"}`,
+    border: autoFitBackgroundEnabled
+      ? `${strokeBgWidth}px solid ${strokeBackground}`
+      : "none",
+    "border-radius": `${radius}`,
   };
 
   const cssTextStyles = cssify(textStyles);
