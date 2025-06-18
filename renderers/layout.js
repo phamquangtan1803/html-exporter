@@ -64,11 +64,21 @@ async function convertChildrenToHtml(children) {
     let calculated = {
       rotation: rotation,
       transformOrigin: "top left",
+      width: width,
+      height: height,
     };
 
     if (elementType === "line_outline" || elementType === "line") {
       calculated.rotation = getLineRotation(child.points);
       calculated.transformOrigin = `left ${child.strokeWidth / 2}px`;
+      calculated.width =
+        type === "text"
+          ? width
+          : width + padding.horizontal * 2 + strokeBgWidth * 2;
+      calculated.height =
+        type === "text"
+          ? height
+          : height + padding.vertical * 2 + strokeBgWidth * 2;
     }
 
     let adjustedShadowOffsetX = shadowOffsetX;
@@ -123,8 +133,8 @@ async function convertChildrenToHtml(children) {
       html,
       x,
       y,
-      width,
-      height,
+      width: calculated.width,
+      height: calculated.height,
       rotation: calculated.rotation,
       transformOrigin: calculated.transformOrigin,
       padding,
@@ -187,8 +197,8 @@ export async function generateChildrenHtml(children) {
         position: absolute;
         left: ${x}px;
         top: ${y}px;
-        width: ${width + padding.horizontal * 2 + strokeBgWidth * 2}px;
-        height: ${height + padding.vertical * 2 + strokeBgWidth * 2}px;
+        width: ${width}px;
+        height: ${height}px;
         z-index: ${index};
         rotate: ${rotation}deg;
         transform-origin: ${transformOrigin}; 

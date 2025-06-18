@@ -54,8 +54,15 @@ export const renderTextPath = ({
   verticalAlign,
   elementWidth,
   elementHeight,
-  adjust = 0,
 }) => {
+  radius = richTextArr.reduce((acc, line, index) => {
+    const minWH = Math.min(
+      line.width,
+      line.height,
+      Math.abs(line.width - (richTextArr[index - 1]?.width ?? 0))
+    );
+    return Math.min(acc, minWH / 2);
+  }, radius || 0);
   const isCenter = horizontalAlign === "center";
   const isStart =
     horizontalAlign === "left" ||
@@ -151,21 +158,42 @@ export const getTextBackground = ({
   stroke = "transparent",
   strokeWidth = 0,
 }) => {
-  const fillPath = renderTextPath({
-    richTextArr,
+  const cloneRichText = JSON.parse(JSON.stringify(richTextArr));
+  const modifiedRichTextArr = cloneRichText.map((line, index) => {
+    return {
+      ...line,
+      width: line.width + strokeWidth,
+      height:
+        line.height +
+        strokeWidth *
+          ((index === 0 ||
+          (index !== 0 && cloneRichText[index - 1].width < line.width)
+            ? 0.5
+            : -0.5) +
+            (index === cloneRichText.length - 1 ||
+            (index !== cloneRichText.length - 1 &&
+              cloneRichText[index + 1].width < line.width)
+              ? 0.5
+              : -0.5)),
+    };
+  });
+  const renderParams = {
+    richTextArr: modifiedRichTextArr,
     radius,
     horizontalAlign,
     verticalAlign,
     elementWidth,
     elementHeight,
-  });
+    strokeWidth,
+  };
+  const fillPath = renderTextPath(renderParams);
 
   return `<svg width="${elementWidth + strokeWidth * 2}" height="${
     elementHeight + strokeWidth * 2
   }" xmlns="http://www.w3.org/2000/svg" viewBox="${-strokeWidth / 2} ${
     -strokeWidth / 2
   } ${elementWidth + strokeWidth * 2} ${elementHeight + strokeWidth * 2}">
-    <path d="${fillPath}" fill="${bgFill}"  />
+    <path d="${fillPath}" fill="${bgFill}" stroke="${stroke}" stroke-width="${strokeWidth}"  />
   </svg>`;
 };
 
@@ -596,8 +624,8 @@ export const textJsonToHtml = (json) => {
     elementWidth: width,
     elementHeight: height,
     bgFill: autoFitBackgroundEnabled ? "transparent" : fill,
-    stroke: strokeBackground,
-    strokeWidth: strokeBgWidth,
+    stroke: autoFitBackgroundEnabled ? "transparent" : strokeBackground,
+    strokeWidth: autoFitBackgroundEnabled ? 0 : strokeBgWidth,
   });
 
   const shadow =
@@ -652,8 +680,8 @@ export const textJsonToHtml = (json) => {
     position: "absolute",
     top: `${topAdjust}px`,
     left: `${leftAdjust}px`,
-    width: "100%",
-    height: "100%",
+    width: `${width + padding.horizontal * 2 + strokeBgWidth * 2}px`,
+    height: `${height + padding.vertical * 2 + strokeBgWidth * 2}px`,
     "z-index": -1,
     "background-color": `${autoFitBackgroundEnabled ? fill : "transparent"}`,
     border: autoFitBackgroundEnabled
