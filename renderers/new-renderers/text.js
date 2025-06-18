@@ -47,6 +47,93 @@ export const getTextTransform = (text, textTransform) => {
   }
 };
 
+export const getTextBackground = ({
+  richTextArr,
+  radius,
+  horizontalAlign,
+  verticalAlign,
+  elementWidth,
+  elementHeight,
+  bgFill = "transparent",
+}) => {
+  const isCenter = horizontalAlign === "center";
+  const isStart =
+    horizontalAlign === "left" ||
+    horizontalAlign === "start" ||
+    horizontalAlign === "justify";
+  const isEnd = horizontalAlign === "right" || horizontalAlign === "end";
+
+  const maxX = elementWidth - richTextArr?.[0]?.width || 0;
+  const maxY =
+    elementHeight - richTextArr?.reduce((acc, line) => acc + line.height, 0) ||
+    0;
+  const startX =
+    maxX * (isCenter ? 0.5 : isEnd ? 1 : 0) + radius * (isStart ? 1 : 0);
+  const startY =
+    maxY *
+    (verticalAlign === "middle" ? 0.5 : verticalAlign === "bottom" ? 1 : 0);
+
+  let textBackgroundPath = "";
+  textBackgroundPath += `M ${startX} ${startY} \n`;
+  textBackgroundPath += `h ${richTextArr[0].width - 2 * radius} \n`;
+  textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${radius} ${radius} \n`;
+
+  for (let i = 1; i < richTextArr.length; i++) {
+    let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
+    textBackgroundPath += `v ${richTextArr[i].height - 2 * radius} \n`;
+    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
+      isLargerThanPrevious ? "0" : "1"
+    }, ${radius * (isLargerThanPrevious ? 1 : -1)} ${radius} \n`;
+    textBackgroundPath += `h ${
+      ((richTextArr[i].width - richTextArr[i - 1].width) *
+        (isCenter ? 0.5 : 1) -
+        (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
+      !isEnd
+    }\n`;
+    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
+      !isLargerThanPrevious ? "0" : "1"
+    }, ${radius * (isLargerThanPrevious ? 1 : -1)} ${radius} \n`;
+  }
+
+  textBackgroundPath += `v ${
+    richTextArr[richTextArr.length - 1].height - 2 * radius
+  } \n`;
+  textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${-radius} ${radius} \n`;
+  textBackgroundPath += `h ${-(
+    richTextArr[richTextArr.length - 1].width -
+    2 * radius
+  )} \n`;
+  textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${-radius} ${-radius} \n`;
+  textBackgroundPath += `v ${-(
+    richTextArr[richTextArr.length - 1].height -
+    2 * radius
+  )} \n`;
+
+  for (let i = richTextArr.length - 1; i > 0; i--) {
+    let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
+    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
+      !isLargerThanPrevious ? "0" : "1"
+    }, ${radius * (!isLargerThanPrevious ? -1 : 1)} ${-radius} \n`;
+    textBackgroundPath += `h ${
+      ((richTextArr[i].width - richTextArr[i - 1].width) *
+        (isCenter ? 0.5 : 1) -
+        (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
+      !isStart
+    }\n`;
+    textBackgroundPath += `a ${radius} ${radius}, 0, 0, ${
+      isLargerThanPrevious ? "0" : "1"
+    }, ${radius * (!isLargerThanPrevious ? -1 : 1)} ${-radius} \n`;
+    textBackgroundPath += `v ${-(richTextArr[i - 1].height - 2 * radius)} \n`;
+  }
+
+  textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${radius} ${-radius} \n`;
+  textBackgroundPath += "Z\n";
+
+  return `<svg width="${elementWidth}" height="${elementHeight}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${elementWidth} ${elementHeight}">
+    <path d="${textBackgroundPath}" fill="${bgFill}" />
+  </svg>`;
+};
+
 export const getRichTextByValueList = (valueList) => {
   return valueList
     .map(
@@ -182,16 +269,6 @@ export const getRichText = (
         .flat()
         .map((char, index, arr) => {
           // console.log("abc", char);
-          console.log(
-            "arr",
-            arr[index - 1]?.adjustedX,
-            "index",
-            index,
-            "fontSize",
-            char.fontSize,
-            "arr[index - 1].fontSize",
-            arr[index - 1]?.fontSize
-          );
           let adjustedX = arr[index - 1]?.adjustedX ?? 0;
           if (
             index &&
@@ -473,7 +550,19 @@ export const textJsonToHtml = (json) => {
     valueList,
     richTextArr,
     width = 0,
+    height,
   } = json;
+  console.log("textJsonToHtml json", json);
+
+  const background = getTextBackground({
+    richTextArr,
+    radius: cornerRadiusTopLeft,
+    horizontalAlign: align,
+    verticalAlign: verticalAlign,
+    elementWidth: width,
+    elementHeight: height,
+    bgFill: autoFitBackgroundEnabled ? "transparent" : fill,
+  });
 
   const shadow =
     shadowEnabled && shadowColor !== "undefined"
@@ -498,7 +587,6 @@ export const textJsonToHtml = (json) => {
     "text-align": `${align}`,
     width: "100%",
     height: "fit-content",
-    "background-color": `${autoFitBackgroundEnabled ? "transparent" : fill}`,
     textDecoration: `${
       richTextArr?.length > 0 || valueList?.length > 0 ? "none" : textDecoration
     }`,
@@ -527,11 +615,24 @@ export const textJsonToHtml = (json) => {
     border: `${strokeBgWidth}px solid ${strokeBackground}`,
   };
 
+  const bgContainerStyle = {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    width: "100%",
+    height: "100%",
+    "z-index": 0,
+  };
+
   const cssTextStyles = cssify(textStyles);
   const cssAlignContainerStyles = cssify(alignContainerStyles);
   const cssContainerStyles = cssify(textContainerStyles);
+  const cssBgContainerStyles = cssify(bgContainerStyle);
 
   return `<div style="${cssContainerStyles}">
+            <div style="${cssBgContainerStyles}">
+              ${background}
+            </div>
             <div style="${cssAlignContainerStyles}">
               ${getRichText(
                 { elementWidth: width, align },
