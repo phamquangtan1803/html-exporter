@@ -685,9 +685,6 @@ export const textJsonToHtml = (json) => {
     top: `${0}px`,
     left: `${0}px`,
     "align-items": `${mapVerticalAlignToFlex.get(verticalAlign)}`,
-    padding: `${autoFitBackgroundEnabled ? padding.vertical : 0}px ${
-      autoFitBackgroundEnabled ? padding.horizontal : 0
-    }px`,
     opacity: `${opacity}`,
   };
 
