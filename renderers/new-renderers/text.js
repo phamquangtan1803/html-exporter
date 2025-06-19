@@ -54,6 +54,8 @@ export const renderTextPath = ({
   verticalAlign,
   elementWidth,
   elementHeight,
+  padding = { horizontal: 0, vertical: 0 },
+  strokeWidth = 0,
 }) => {
   radius = textArr.reduce((acc, line, index) => {
     const minWH = Math.min(
@@ -70,14 +72,20 @@ export const renderTextPath = ({
     horizontalAlign === "justify";
   const isEnd = horizontalAlign === "right" || horizontalAlign === "end";
 
-  const maxX = elementWidth - textArr?.[0]?.width || 0;
+  const maxX =
+    elementWidth - textArr?.[0]?.width + 2 * padding.horizontal + strokeWidth ||
+    0;
   const maxY =
-    elementHeight - textArr?.reduce((acc, line) => acc + line.height, 0) || 0;
+    elementHeight -
+      textArr?.reduce((acc, line) => acc + line.height, 0) +
+      2 * padding.vertical || 0;
   const startX =
-    maxX * (isCenter ? 0.5 : isEnd ? 1 : 0) + radius * (isStart ? 1 : 0);
+    maxX * (isCenter ? 0.5 : isEnd ? 1 : 0) +
+    radius * (isStart | isEnd ? 1 : 0);
   const startY =
     maxY *
     (verticalAlign === "middle" ? 0.5 : verticalAlign === "bottom" ? 1 : 0);
+  console.log("maxX", maxX, "maxY", maxY);
 
   let textBackgroundPath = "";
   textBackgroundPath += `M ${startX} ${startY} \n`;
@@ -182,8 +190,10 @@ export const getTextBackground = ({
     radius,
     horizontalAlign,
     verticalAlign,
-    elementWidth: elementWidth + padding.horizontal * 2,
-    elementHeight: elementHeight + padding.vertical * 2,
+    elementWidth: elementWidth,
+    elementHeight: elementHeight,
+    padding,
+    strokeWidth,
   };
   const fillPath = renderTextPath(renderParams);
 
@@ -193,7 +203,7 @@ export const getTextBackground = ({
   return `<svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg" viewBox="${
     -strokeWidth / 2
   } ${-strokeWidth / 2} ${svgWidth} ${svgHeight}">
-    <path d="${fillPath}" fill="${bgFill}" stroke="${stroke}" stroke-width="${strokeWidth}"  />
+    <path d="${fillPath}" fill="${bgFill}" stroke="${stroke}" stroke-width="${strokeWidth}" />
   </svg>`;
 };
 
@@ -656,8 +666,10 @@ export const textJsonToHtml = (json) => {
 
   const text = getTextTransform(json.text || "", textTransform);
   const textStyles = {
-    border: `${strokeBgWidth}px solid ${strokeBackground}`,
-    "border-radius": `${radius}`,
+    border: autoFitBackgroundEnabled
+      ? `${strokeBgWidth}px solid ${strokeBackground}`
+      : "none",
+    "border-radius": autoFitBackgroundEnabled ? `${radius}` : "0px",
   };
 
   const alignContainerStyles = {
