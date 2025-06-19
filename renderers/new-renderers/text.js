@@ -48,18 +48,18 @@ export const getTextTransform = (text, textTransform) => {
 };
 
 export const renderTextPath = ({
-  richTextArr,
+  textArr,
   radius,
   horizontalAlign,
   verticalAlign,
   elementWidth,
   elementHeight,
 }) => {
-  radius = richTextArr.reduce((acc, line, index) => {
+  radius = textArr.reduce((acc, line, index) => {
     const minWH = Math.min(
       line.width,
       line.height,
-      Math.abs(line.width - (richTextArr[index - 1]?.width ?? 0))
+      Math.abs(line.width - (textArr[index - 1]?.width ?? 0))
     );
     return Math.min(acc, minWH / 2);
   }, radius || 0);
@@ -70,10 +70,9 @@ export const renderTextPath = ({
     horizontalAlign === "justify";
   const isEnd = horizontalAlign === "right" || horizontalAlign === "end";
 
-  const maxX = elementWidth - richTextArr?.[0]?.width || 0;
+  const maxX = elementWidth - textArr?.[0]?.width || 0;
   const maxY =
-    elementHeight - richTextArr?.reduce((acc, line) => acc + line.height, 0) ||
-    0;
+    elementHeight - textArr?.reduce((acc, line) => acc + line.height, 0) || 0;
   const startX =
     maxX * (isCenter ? 0.5 : isEnd ? 1 : 0) + radius * (isStart ? 1 : 0);
   const startY =
@@ -82,20 +81,19 @@ export const renderTextPath = ({
 
   let textBackgroundPath = "";
   textBackgroundPath += `M ${startX} ${startY} \n`;
-  textBackgroundPath += `h ${richTextArr[0].width - 2 * radius} \n`;
+  textBackgroundPath += `h ${textArr[0].width - 2 * radius} \n`;
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${radius} ${radius} \n`;
-  textBackgroundPath += `v ${richTextArr[0].height - 2 * radius} \n`;
+  textBackgroundPath += `v ${textArr[0].height - 2 * radius} \n`;
 
-  for (let i = 1; i < richTextArr.length; i++) {
-    let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
+  for (let i = 1; i < textArr.length; i++) {
+    let isLargerThanPrevious = textArr[i].width > textArr[i - 1].width;
     textBackgroundPath += !isEnd
       ? `a ${radius} ${radius}, 0, 0, ${isLargerThanPrevious ? "0" : "1"}, ${
           radius * (isLargerThanPrevious ? 1 : -1)
         } ${radius} \n`
       : "";
     textBackgroundPath += `h ${
-      ((richTextArr[i].width - richTextArr[i - 1].width) *
-        (isCenter ? 0.5 : 1) -
+      ((textArr[i].width - textArr[i - 1].width) * (isCenter ? 0.5 : 1) -
         (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
       !isEnd
     }\n`;
@@ -104,30 +102,29 @@ export const renderTextPath = ({
           radius * (isLargerThanPrevious ? 1 : -1)
         } ${radius} \n`
       : "";
-    textBackgroundPath += `v ${richTextArr[i].height - 2 * radius * !isEnd} \n`;
+    textBackgroundPath += `v ${textArr[i].height - 2 * radius * !isEnd} \n`;
   }
 
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${-radius} ${radius} \n`;
   textBackgroundPath += `h ${-(
-    richTextArr[richTextArr.length - 1].width -
+    textArr[textArr.length - 1].width -
     2 * radius
   )} \n`;
   textBackgroundPath += `a ${radius} ${radius}, 0, 0, 1, ${-radius} ${-radius} \n`;
   textBackgroundPath += `v ${-(
-    richTextArr[richTextArr.length - 1].height -
+    textArr[textArr.length - 1].height -
     2 * radius
   )} \n`;
 
-  for (let i = richTextArr.length - 1; i > 0; i--) {
-    let isLargerThanPrevious = richTextArr[i].width > richTextArr[i - 1].width;
+  for (let i = textArr.length - 1; i > 0; i--) {
+    let isLargerThanPrevious = textArr[i].width > textArr[i - 1].width;
     textBackgroundPath += !isStart
       ? `a ${radius} ${radius}, 0, 0, ${!isLargerThanPrevious ? "0" : "1"}, ${
           radius * (!isLargerThanPrevious ? -1 : 1)
         } ${-radius} \n`
       : "";
     textBackgroundPath += `h ${
-      ((richTextArr[i].width - richTextArr[i - 1].width) *
-        (isCenter ? 0.5 : 1) -
+      ((textArr[i].width - textArr[i - 1].width) * (isCenter ? 0.5 : 1) -
         (isLargerThanPrevious ? 1 : -1) * 2 * radius) *
       !isStart
     }\n`;
@@ -137,7 +134,7 @@ export const renderTextPath = ({
         } ${-radius} \n`
       : "";
     textBackgroundPath += `v ${-(
-      richTextArr[i - 1].height -
+      textArr[i - 1].height -
       2 * radius * !isStart
     )} \n`;
   }
@@ -148,7 +145,7 @@ export const renderTextPath = ({
 };
 
 export const getTextBackground = ({
-  richTextArr,
+  textArr,
   radius,
   horizontalAlign,
   verticalAlign,
@@ -157,15 +154,17 @@ export const getTextBackground = ({
   bgFill = "transparent",
   stroke = "transparent",
   strokeWidth = 0,
+  padding,
 }) => {
-  const cloneRichText = JSON.parse(JSON.stringify(richTextArr));
+  console.log("textArr1", textArr);
+  const cloneRichText = JSON.parse(JSON.stringify(textArr));
   const modifiedRichTextArr = cloneRichText.map((line, index) => {
     return {
       ...line,
-      width: line.width + strokeWidth,
+      width: line.width + strokeWidth + padding.horizontal * 2,
       height:
         line.height +
-        strokeWidth *
+        (padding.vertical * 2 + strokeWidth) *
           ((index === 0 ||
           (index !== 0 && cloneRichText[index - 1].width < line.width)
             ? 0.5
@@ -177,22 +176,23 @@ export const getTextBackground = ({
               : -0.5)),
     };
   });
+  console.log("textArr2", modifiedRichTextArr);
   const renderParams = {
-    richTextArr: modifiedRichTextArr,
+    textArr: modifiedRichTextArr,
     radius,
     horizontalAlign,
     verticalAlign,
-    elementWidth,
-    elementHeight,
-    strokeWidth,
+    elementWidth: elementWidth + padding.horizontal * 2,
+    elementHeight: elementHeight + padding.vertical * 2,
   };
   const fillPath = renderTextPath(renderParams);
 
-  return `<svg width="${elementWidth + strokeWidth * 2}" height="${
-    elementHeight + strokeWidth * 2
-  }" xmlns="http://www.w3.org/2000/svg" viewBox="${-strokeWidth / 2} ${
+  const svgWidth = elementWidth + padding.horizontal * 2 + strokeWidth * 2;
+  const svgHeight = elementHeight + padding.vertical * 2 + strokeWidth * 2;
+
+  return `<svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg" viewBox="${
     -strokeWidth / 2
-  } ${elementWidth + strokeWidth * 2} ${elementHeight + strokeWidth * 2}">
+  } ${-strokeWidth / 2} ${svgWidth} ${svgHeight}">
     <path d="${fillPath}" fill="${bgFill}" stroke="${stroke}" stroke-width="${strokeWidth}"  />
   </svg>`;
 };
@@ -274,7 +274,10 @@ export const getRichText = (
   fallbackTextStyle
 ) => {
   if (richTextArr?.length <= 0 && fallbackValueList?.length <= 0) {
-    return `<span style="${fallbackTextStyle}">${fallbackText}</span>`;
+    return `<span style="${fallbackTextStyle}">${fallbackText.replace(
+      /\n/g,
+      "<br />"
+    )}</span>`;
   }
   if (richTextArr?.length <= 0) {
     return getRichTextByValueList(fallbackValueList);
@@ -613,11 +616,20 @@ export const textJsonToHtml = (json) => {
     richTextArr,
     width = 0,
     height,
+    textArr,
   } = json;
   console.log("textJsonToHtml json", json);
 
   const background = getTextBackground({
-    richTextArr,
+    textArr:
+      richTextArr.length > 0
+        ? richTextArr
+        : textArr.map((line) => {
+            return {
+              width: line.width,
+              height: lineHeight * fontSize,
+            };
+          }),
     radius: cornerRadiusTopLeft,
     horizontalAlign: align,
     verticalAlign: verticalAlign,
@@ -626,6 +638,7 @@ export const textJsonToHtml = (json) => {
     bgFill: autoFitBackgroundEnabled ? "transparent" : fill,
     stroke: autoFitBackgroundEnabled ? "transparent" : strokeBackground,
     strokeWidth: autoFitBackgroundEnabled ? 0 : strokeBgWidth,
+    padding: padding,
   });
 
   const shadow =
@@ -672,7 +685,9 @@ export const textJsonToHtml = (json) => {
     top: `${0}px`,
     left: `${0}px`,
     "align-items": `${mapVerticalAlignToFlex.get(verticalAlign)}`,
-    padding: `${padding.vertical}px ${padding.horizontal}px`,
+    padding: `${autoFitBackgroundEnabled ? padding.vertical : 0}px ${
+      autoFitBackgroundEnabled ? padding.horizontal : 0
+    }px`,
     opacity: `${opacity}`,
   };
 
