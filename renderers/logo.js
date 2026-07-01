@@ -106,3 +106,5 @@ export async function convertLogoJsonToHtml(json, rootCoordinates) {
   const generator = new LogoElementGenerator(json, rootCoordinates);
   return generator.generate();
 }
+
+// unrelated tweak for scope creep test
