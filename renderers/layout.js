@@ -1,11 +1,11 @@
 import { STAR_RATING_ELEMENT } from "./constant.js";
-import { prefetchFonts } from "./new-renderers/base.js";
-import { imageJsonToHtml } from "./new-renderers/image.js";
-import { getLineRotation, lineJsonToHtml } from "./new-renderers/line.js";
-import { logoJsonToHtml } from "./new-renderers/logo.js";
-import { shapeJsonToHtml } from "./new-renderers/shape.js";
-import { starSvgJsonToHtml } from "./new-renderers/star.js";
-import { textJsonToHtml } from "./new-renderers/text.js";
+import { prefetchFonts } from "./font-utils.js";
+import { imageJsonToHtml } from "./image.js";
+import { getLineRotation, lineJsonToHtml } from "./line.js";
+import { logoJsonToHtml } from "./logo.js";
+import { shapeJsonToHtml } from "./shape.js";
+import { starSvgJsonToHtml } from "./star.js";
+import { textJsonToHtml } from "./text-renderer.js";
 
 function getResetCSS() {
   return `

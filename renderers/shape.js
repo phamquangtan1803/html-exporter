@@ -1,350 +1,136 @@
-import { convertHexToRgba } from "../utils/color.js";
+import { changeSvgColorAndStroke, stretchySvg } from "./svg-utils.js";
+import { cssify } from "./css-utils.js";
+import { getOverlayElement } from "./overlay.js";
+import { buildShadowString } from "../utils/shadow.js";
+import { buildRadiusString } from "../utils/border-radius.js";
 
-import { ElementGenerator } from "./base.js";
-import { STAR_RATING_ELEMENT } from "./constant.js";
-
-class ShapeElementGenerator extends ElementGenerator {
-  constructor(json, rootCoordinates) {
-    super(json, rootCoordinates, []);
-  }
-
-  generateSvgLayer({
-    width,
-    height,
+export const shapeJsonToHtml = async (json) => {
+  const {
     svgElement,
-    stroke = "transparent",
-    strokeWidth = 0,
-    id,
-    elementType,
-    overlayFill = "",
-    alpha = 0,
-  }) {
-    const { viewBoxWidth, viewBoxHeight, svgString } = svgElement;
-    const { d } = svgElement.children[0];
-    const isPathOrRect = svgString.includes("rect");
-
-    if (isPathOrRect) {
-      return this.generateRectSvg(
-        width,
-        height,
-        stroke,
-        strokeWidth,
-        overlayFill,
-        alpha,
-        id,
-        elementType
-      );
-    }
-
-    return `
-      <svg 
-        preserveAspectRatio="none" 
-        width="${width}" 
-        height="${height}" 
-        viewBox="0 0 ${viewBoxWidth} ${viewBoxHeight}" 
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          vector-effect="non-scaling-stroke" 
-          stroke-width="${strokeWidth}" 
-          stroke="${stroke}" 
-          d="${d}" 
-          fill="${overlayFill && alpha ? overlayFill : "none"}"
-          opacity="${alpha || 1}"
-        />
-      </svg>
-    `;
-  }
-
-  generateRectSvg(
-    width,
-    height,
+    fill,
     stroke,
     strokeWidth,
-    fill,
-    alpha,
-    id,
-    elementType
-  ) {
-    const { svgElement } = this.json;
-    const { svgString } = svgElement;
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
-    const rect = svgDoc.querySelector("rect");
+    cornerRadiusTopLeft,
+    cornerRadiusTopRight,
+    cornerRadiusBottomLeft,
+    cornerRadiusBottomRight,
+    alpha = 0,
+    overlayFill,
+    gradient,
+    opacity,
+    src,
+    cropWidth,
+    cropHeight,
+    cropX,
+    cropY,
+    width,
+    height,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
+  } = json;
 
-    if (rect) {
-      const x = rect.getAttribute("x") || "0";
-      const y = rect.getAttribute("y") || "0";
-      const rectWidth = rect.getAttribute("width") || width;
-      const rectHeight = rect.getAttribute("height") || height;
+  const svgSrc = svgElement.svgString
+    ? await changeSvgColorAndStroke(
+        stretchySvg(svgElement.svgString),
+        fill,
+        stroke,
+        strokeWidth,
+        width,
+        height,
+        svgElement
+      )
+    : "";
 
-      return `
-        <svg 
-          preserveAspectRatio="none" 
-          width="${width}" 
-          height="${height}" 
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <rect
-            x="${x}"
-            y="${y}"
-            width="${rectWidth}"
-            height="${rectHeight}"
-            stroke="${stroke}"
-            stroke-width="${strokeWidth}"
-            fill="${fill || "none"}"
-            opacity="${alpha || 1}"
-          />
-        </svg>
-      `;
-    }
+  const imgSrc = src;
+  const shapeType = svgElement.children?.[0].type;
 
-    return `<svg width="${width}" height="${height}"></svg>`;
-  }
+  const shadow = buildShadowString({
+    shadowEnabled: json.shadowEnabled,
+    shadowColor: json.shadowColor,
+    shadowBlur: json.shadowBlur,
+    shadowOpacity: json.shadowOpacity,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
+  });
 
-  wrapperDiv(svgContent) {
-    const {
-      opacity,
-      shadowOffsetX,
-      shadowBlur,
-      shadowColor,
-      shadowOffsetY,
-      shadowOpacity,
-      shadowEnabled,
-      rotation,
-      height,
-      width,
-      hyperlink,
-    } = this.json;
+  const radius = buildRadiusString(
+    cornerRadiusTopLeft,
+    cornerRadiusTopRight,
+    cornerRadiusBottomLeft,
+    cornerRadiusBottomRight
+  );
 
-    const shadowStyle = shadowEnabled
-      ? `filter: drop-shadow(${shadowOffsetX}px ${shadowOffsetY}px ${
-          shadowBlur / 2
-        }px ${convertHexToRgba(shadowColor, shadowOpacity)});`
-      : "";
+  const calculatedCropY =
+    shapeType === "ellipse" ? 0.5 + cropY - 0.5 * cropHeight : cropY;
+  const calculatedCropX =
+    shapeType === "ellipse" ? 0.5 + cropX - 0.5 * cropWidth : cropX;
 
-    return `
-      <div style="
-        opacity: ${opacity};
-        width: ${width}px;
-        height: ${height}px;
-        transform: rotate(${rotation}deg);
-        transform-origin: top left;
-        ${shadowStyle}
-        ${this.cssify(this.calcMarginDimension())};
-      ">
-        ${this.isHyperLink(hyperlink, svgContent)}
-      </div>
-    `;
-  }
+  const shapeStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 0,
+    "object-fit": "fill",
+  };
 
-  getMaskSvg() {
-    const { width, height, svgElement, src, fill } = this.json;
-    let svgString = svgElement?.svgString || "";
+  const imgContainerStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "border-radius": `${radius}`,
+    "z-index": 1,
+    "mask-image": `url(${svgSrc})`,
+  };
 
-    if (!src) {
-      svgString = svgString.replace(
-        /fill="[^"]*"/g,
-        `fill="${fill ?? "none"}"`
-      );
-    }
+  const imgStyle = {
+    width: `${(100 / (100 * cropWidth)) * 100}%`,
+    height: `${(100 / (100 * cropHeight)) * 100}%`,
+    top: `-${(100 / (100 * cropHeight)) * calculatedCropY * 100}%`,
+    left: `-${(100 / (100 * cropWidth)) * calculatedCropX * 100}%`,
+    position: "absolute",
+  };
 
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
-    const svg = svgDoc.querySelector("svg");
+  const borderStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 2,
+  };
 
-    if (svg) {
-      svg.setAttribute("preserveAspectRatio", "none");
-      svg.setAttribute("width", width);
-      svg.setAttribute("height", height);
-      return svg.outerHTML;
-    }
+  const overlayStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 3,
+    "border-radius": `${radius}`,
+    "mask-image": `url(${svgSrc})`,
+  };
 
-    return `<svg width="${width}" height="${height}"></svg>`;
-  }
+  const containerStyle = {
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+    position: "relative",
+    "border-radius": `${radius}`,
+    filter: `drop-shadow(${shadow})`,
+    opacity: `${opacity}`,
+  };
 
-  getStrokeSvg() {
-    const { width, height, svgElement, stroke, strokeWidth, id, elementType } =
-      this.json;
+  const cssContainerStyle = cssify(containerStyle);
+  const cssShapeStyle = cssify(shapeStyle);
+  const cssImgStyle = cssify(imgStyle);
+  const cssImgContainerStyle = cssify(imgContainerStyle);
+  const cssBorderStyle = cssify(borderStyle);
 
-    return this.generateSvgLayer({
-      width,
-      height,
-      svgElement,
-      stroke,
-      strokeWidth,
-      id,
-      elementType,
-    });
-  }
+  return `<div style="${cssContainerStyle}">
+            <img style="${cssShapeStyle}" src="${svgSrc}"/>
+            ${
+              imgSrc &&
+              `<div style="${cssImgContainerStyle}">
+              <img style="${cssImgStyle}" src="${imgSrc}" />
+            </div>`
+            }
 
-  async generateSvgWithBackground() {
-    const { width, height, fill, src, gradient, overlayFill, alpha } =
-      this.json;
-
-    const maskSvg = this.getMaskSvg();
-    const strokeSvg = this.getStrokeSvg();
-
-    // Create a combined SVG with background, mask, and stroke
-    let backgroundElements = "";
-
-    // Add solid fill background
-    if (fill && fill !== "transparent") {
-      backgroundElements += `<rect width="100%" height="100%" fill="${fill}"/>`;
-    }
-
-    // Add image background if exists
-    if (src) {
-      backgroundElements += `
-        <image href="${src}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"/>
-      `;
-    }
-
-    // Add gradient background if exists
-    if (gradient && gradient.configs && gradient.opacity > 0) {
-      const gradientId = `gradient-${this.json.id}`;
-      const angle = gradient.rotation || 0;
-
-      const gradientDef = `
-        <defs>
-          <linearGradient id="${gradientId}" gradientTransform="rotate(${angle})">
-            ${gradient.configs
-              .map(
-                (config) =>
-                  `<stop offset="${config.offset * 100}%" stop-color="${
-                    config.color
-                  }"/>`
-              )
-              .join("")}
-          </linearGradient>
-        </defs>
-      `;
-
-      backgroundElements =
-        gradientDef +
-        backgroundElements +
-        `<rect width="100%" height="100%" fill="url(#${gradientId})" opacity="${gradient.opacity}"/>`;
-    }
-
-    // Add overlay if exists
-    if (overlayFill && alpha) {
-      backgroundElements += `<rect width="100%" height="100%" fill="${overlayFill}" opacity="${alpha}"/>`;
-    }
-
-    const combinedSvg = `
-      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-        ${backgroundElements}
-        ${strokeSvg.replace(/<svg[^>]*>|<\/svg>/g, "")}
-      </svg>
-    `;
-
-    return combinedSvg;
-  }
-
-  async generate() {
-    const svgContent = await this.generateSvgWithBackground();
-    return this.wrapperDiv(svgContent);
-  }
-}
-
-class LineElementGenerator extends ShapeElementGenerator {
-  constructor(json, rootCoordinates) {
-    super(json, rootCoordinates);
-  }
-
-  createSvgLine() {
-    const { points, stroke, strokeWidth, dash, width, height } = this.json;
-    let [x1, y1, x2, y2] = points;
-
-    const svgHeight = Math.max(Math.abs(y1), Math.abs(y2)) + strokeWidth;
-
-    return `
-      <svg width="${width}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
-        <line 
-          x1="${x1}" 
-          y1="${Math.abs(Math.min(y1, y2)) + strokeWidth / 2}" 
-          x2="${x2}" 
-          y2="${Math.max(y1, y2) + strokeWidth / 2}"
-          stroke="${stroke}"
-          stroke-width="${strokeWidth}"
-          ${dash ? `stroke-dasharray="${dash.join(",")}"` : ""}
-        />
-      </svg>
-    `;
-  }
-
-  async generate() {
-    const svgContent = this.createSvgLine();
-    return this.wrapperDiv(svgContent);
-  }
-}
-
-export class StarRatingGenerator extends ShapeElementGenerator {
-  constructor(json, rootCoordinates) {
-    super(json, rootCoordinates);
-    this.svgString = STAR_RATING_ELEMENT;
-  }
-
-  generateStarSvg() {
-    const { width, height, fill, stroke, strokeWidth, overlayFill, alpha } =
-      this.json;
-    let svgString = this.svgString;
-
-    // Replace fill color
-    svgString = svgString.replace(/fill="[^"]*"/g, `fill="${fill ?? "none"}"`);
-
-    // Add stroke if specified
-    if (stroke && strokeWidth) {
-      svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${stroke}"`);
-      svgString = svgString.replace(
-        /stroke-width="[^"]*"/g,
-        `stroke-width="${strokeWidth}"`
-      );
-    }
-
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
-    const svg = svgDoc.querySelector("svg");
-
-    if (svg) {
-      svg.setAttribute("preserveAspectRatio", "none");
-      svg.setAttribute("width", width);
-      svg.setAttribute("height", height);
-
-      // Add overlay if specified
-      if (overlayFill && alpha) {
-        const overlay = svg.cloneNode(true);
-        const overlayPaths = overlay.querySelectorAll("path");
-        overlayPaths.forEach((path) => {
-          path.setAttribute("fill", overlayFill);
-          path.setAttribute("opacity", alpha);
-        });
-        svg.appendChild(overlay);
-      }
-
-      return svg.outerHTML;
-    }
-
-    return `<svg width="${width}" height="${height}"></svg>`;
-  }
-
-  async generate() {
-    const svgContent = this.generateStarSvg();
-    return this.wrapperDiv(svgContent);
-  }
-}
-
-export async function convertShapeJsonToHtml(json, rootCoordinates) {
-  const generator = new ShapeElementGenerator(json, rootCoordinates);
-  return generator.generate();
-}
-
-export async function convertLineJsonToHtml(json, rootCoordinates) {
-  const generator = new LineElementGenerator(json, rootCoordinates);
-  return generator.generate();
-}
-
-export async function convertStarRatingJsonToHtml(json, rootCoordinates) {
-  const generator = new StarRatingGenerator(json, rootCoordinates);
-  return generator.generate();
-}
+            ${getOverlayElement(gradient, overlayStyle, overlayFill, alpha)}
+        </div>`;
+};
