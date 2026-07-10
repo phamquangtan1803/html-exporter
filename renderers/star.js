@@ -1,4 +1,6 @@
-import { convertHexToRgba, cssify, stretchySvg } from "./base.js";
+import { convertHexToRgba } from "../utils/color.js";
+import { cssify } from "./css-utils.js";
+import { stretchySvg } from "./svg-utils.js";
 
 export const starSvgJsonToHtml = (svgString, json) => {
   const {
@@ -14,10 +16,8 @@ export const starSvgJsonToHtml = (svgString, json) => {
   } = json;
   if (!svgString) return `<svg width="${width}" height="${height}"></svg>`;
 
-  // Replace fill color
   svgString = svgString.replace(/fill="[^"]*"/g, `fill="${fill ?? "none"}"`);
 
-  // Add stroke if specified
   if (stroke && strokeWidth) {
     svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${stroke}"`);
     svgString = svgString.replace(
@@ -26,11 +26,8 @@ export const starSvgJsonToHtml = (svgString, json) => {
     );
   }
 
-  console.log("svgString11", svgString);
-
   svgString = stretchySvg(svgString);
 
-  // Add width and height attributes
   svgString = svgString.replace(
     /<svg/,
     `<svg width="${width}" height="${height}" `

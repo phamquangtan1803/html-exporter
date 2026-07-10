@@ -1,4 +1,7 @@
-import { convertHexToRgba, cssify, getOverlayElement } from "./base.js";
+import { convertHexToRgba } from "../utils/color.js";
+import { cssify } from "./css-utils.js";
+import { getOverlayElement } from "./overlay.js";
+import { buildShadowString } from "../utils/shadow.js";
 
 export const getLineRotation = (points) => {
   const [x1, y1, x2, y2] = points;
@@ -16,23 +19,19 @@ export const lineJsonToHtml = (json) => {
     alpha,
     overlayFill,
     gradient,
-    shadowEnabled,
-    shadowColor,
-    shadowBlur,
-    shadowOpacity,
-    shadowOffsetX,
-    shadowOffsetY,
     opacity = 1,
     adjustedShadowOffsetX,
     adjustedShadowOffsetY,
   } = json;
 
-  const shadow =
-    shadowEnabled && shadowColor !== "undefined"
-      ? `${adjustedShadowOffsetX}px ${adjustedShadowOffsetY}px ${
-          shadowBlur / 2
-        }px ${convertHexToRgba(shadowColor, shadowOpacity)}`
-      : "none";
+  const shadow = buildShadowString({
+    shadowEnabled: json.shadowEnabled,
+    shadowColor: json.shadowColor,
+    shadowBlur: json.shadowBlur,
+    shadowOpacity: json.shadowOpacity,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
+  });
 
   const [x1, y1, x2, y2] = points;
   const lineLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
@@ -62,8 +61,8 @@ export const lineJsonToHtml = (json) => {
   return `
         <div style="${cssContainerStyle}">
             <svg style="${cssSvgStyle}" fill="currentColor" stroke="currentColor" viewBox="0 0 ${lineLength} ${strokeWidth}" xmlns="http://www.w3.org/2000/svg">
-                <line 
-                    x1="0" y1="${strokeWidth / 2}px" 
+                <line
+                    x1="0" y1="${strokeWidth / 2}px"
                     x2="${lineLength}" y2="${strokeWidth / 2}px"
                     stroke-width="${strokeWidth}px"
                     ${dash ? `stroke-dasharray="${dash.join(",")}"` : ""}/>

@@ -1,219 +1,120 @@
-import { convertHexToRgba } from "../utils/color.js";
+import { changeSvgColorFromSrc } from "./svg-utils.js";
+import { cssify } from "./css-utils.js";
+import { getOverlayElement } from "./overlay.js";
+import { buildShadowString } from "../utils/shadow.js";
+import { buildRadiusString } from "../utils/border-radius.js";
 
-import { BorderStyleGenerator, ElementGenerator } from "./base.js";
+export const imageJsonToHtml = async (json) => {
+  const {
+    src,
+    cropHeight,
+    cropWidth,
+    cropX,
+    cropY,
+    flipHorizontal,
+    flipVertical,
+    fill = "transparent",
+    stroke = "transparent",
+    strokeWidth = 0,
+    cornerRadiusTopLeft = 0,
+    cornerRadiusTopRight = 0,
+    cornerRadiusBottomRight = 0,
+    cornerRadiusBottomLeft = 0,
+    alpha = 0,
+    overlayFill,
+    gradient,
+    opacity = 1,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
+  } = json;
 
-class ImageElementGenerator extends ElementGenerator {
-  constructor(json, rootCoordinates) {
-    super(json, rootCoordinates, [
-      new BorderStyleGenerator(json, rootCoordinates),
-    ]);
-  }
+  const imgSrc = src.endsWith(".svg")
+    ? await changeSvgColorFromSrc(src, fill)
+    : src;
+  const flipTransform = flipHorizontal ? "scaleX(-1)" : "";
+  const flipVerticalTransform = flipVertical ? "scaleY(-1)" : "";
+  const transform =
+    flipTransform || flipVerticalTransform
+      ? `${flipTransform} ${flipVerticalTransform}`
+      : "none";
+  const shadow = buildShadowString({
+    shadowEnabled: json.shadowEnabled,
+    shadowColor: json.shadowColor,
+    shadowBlur: json.shadowBlur,
+    shadowOpacity: json.shadowOpacity,
+    adjustedShadowOffsetX,
+    adjustedShadowOffsetY,
+  });
+  const radius = buildRadiusString(
+    cornerRadiusTopLeft,
+    cornerRadiusTopRight,
+    cornerRadiusBottomRight,
+    cornerRadiusBottomLeft
+  );
 
-  getBorderRadius() {
-    const borderStyles = this.styleGenerators.find(
-      (style) => style instanceof BorderStyleGenerator
-    );
-    if (!borderStyles) return {};
+  const calculatedBackgroundColor = src.endsWith(".svg") ? "none" : fill;
 
-    return borderStyles.getBorderRadius();
-  }
+  const imageContainerStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 1,
+    "border-radius": `${radius}`,
+    overflow: "hidden",
+    filter: `drop-shadow(${shadow})`,
+  };
 
-  async applyOverlay(imgUrl) {
-    const { width, height, overlayFill, alpha } = this.json;
+  const imageStyle = {
+    position: "relative",
+    width: `${(100 / (100 * cropWidth)) * 100}%`,
+    height: `${(100 / (100 * cropHeight)) * 100}%`,
+    top: `-${(100 / (100 * cropHeight)) * cropY * 100}%`,
+    left: `-${(100 / (100 * cropWidth)) * cropX * 100}%`,
+    transform: transform,
+    "background-color": `${calculatedBackgroundColor}`,
+  };
 
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
+  const imageOverlayStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 2,
+    "border-radius": `${radius}`,
+  };
 
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imgUrl;
-    });
+  const imageStrokeStyle = {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    "z-index": 3,
+    "border-radius": `${radius}`,
+    border: `${strokeWidth}px solid ${stroke}`,
+  };
 
-    ctx.drawImage(img, 0, 0, width, height);
+  const containerStyle = {
+    width: "100%",
+    height: "100%",
+    position: "relative",
+    "border-radius": `${radius}`,
+    opacity: `${opacity}`,
+  };
 
-    ctx.fillStyle = convertHexToRgba(overlayFill, alpha);
-    ctx.fillRect(0, 0, width, height);
+  const cssImageStyle = cssify(imageStyle);
+  const cssImageContainerStyle = cssify(imageContainerStyle);
+  const cssImageStrokeStyle = cssify(imageStrokeStyle);
+  const cssContainerStyle = cssify(containerStyle);
 
-    return canvas.toDataURL("image/png");
-  }
-
-  async applyGradientBackground(imgUrl) {
-    const { width, height, gradient } = this.json;
-    if (!gradient || !gradient.configs || gradient.opacity === 0) return imgUrl;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imgUrl;
-    });
-    ctx.drawImage(img, 0, 0, width, height);
-
-    const gradientConfig = gradient.configs;
-    const angle = (gradient.rotation * Math.PI) / 180;
-
-    const x1 = width / 2 - (width / 2) * Math.cos(angle);
-    const y1 = height / 2 - (width / 2) * Math.sin(angle);
-    const x2 = width / 2 + (width / 2) * Math.cos(angle);
-    const y2 = height / 2 + (width / 2) * Math.sin(angle);
-
-    const gradientObj = ctx.createLinearGradient(x1, y1, x2, y2);
-
-    gradientConfig.forEach((config) => {
-      gradientObj.addColorStop(config.offset, config.color);
-    });
-
-    ctx.globalAlpha = gradient.opacity;
-    ctx.fillStyle = gradientObj;
-    ctx.fillRect(0, 0, width, height);
-
-    return canvas.toDataURL("image/png");
-  }
-
-  async generate() {
-    const {
-      opacity,
-      width,
-      height,
-      flipHorizontal,
-      flipVertical,
-      rotation = 0,
-      shadowColor,
-      shadowBlur,
-      shadowOpacity,
-      shadowOffsetX,
-      shadowOffsetY,
-      shadowEnabled,
-      overlayFill,
-      alpha,
-      strokeWidth,
-      stroke,
-      strokeBgWidth,
-      strokeBackground,
-      id,
-      hyperlink,
-      elementType,
-      fill,
-      gradient,
-    } = this.json;
-
-    const isSmallImg = width / this.rootCoordinates.width <= 0.5;
-    let imgUrl = await this.cropImage();
-
-    if (overlayFill && alpha) {
-      imgUrl = await this.applyOverlay(imgUrl);
-    }
-
-    if (gradient) {
-      imgUrl = await this.applyGradientBackground(imgUrl);
-    }
-
-    const scale = `scale(${flipHorizontal ? -1 : 1}, ${flipVertical ? -1 : 1})`;
-    const rotate = `rotate(${rotation}deg)`;
-
-    const borderStyles = {
-      overflow: "hidden",
-      ...this.getBorderRadius(),
-    };
-
-    const outlineStyles = {
-      outlineWidth: `${strokeBgWidth || strokeWidth}px`,
-      outlineOffset: `-${strokeBgWidth || strokeWidth}px`,
-      outlineColor: strokeBackground || stroke || "transparent",
-      outlineStyle: "solid",
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      zIndex: 2,
-    };
-
-    const imageStyles = {
-      boxSizing: "border-box",
-      margin: 0,
-      padding: 0,
-      width: "100%",
-      height: `${height}px`,
-      maxWidth: `${width}px`,
-      maxHeight: `${height}px`,
-      objectFit: "cover",
-      transform: `${scale}`,
-    };
-
-    const containerStyles = {
-      margin: 0,
-      padding: 0,
-      boxSizing: "border-box",
-      opacity: opacity,
-      maxWidth: "100%",
-      overflow: "hidden",
-      position: "relative",
-      width: `${width}px ${isSmallImg ? "!important" : ""}`,
-      height: `${height}px ${isSmallImg ? "!important" : ""}`,
-      transform: `${rotate}`,
-      transformOrigin: "top left",
-      boxShadow:
-        shadowEnabled && shadowColor
-          ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${convertHexToRgba(
-              shadowColor,
-              shadowOpacity
-            )}`
-          : "none",
-      backgroundColor: fill,
-      ...this.getBorderRadius(),
-      ...this.calcMarginDimension(),
-    };
-
-    const strokeElement = `
-      <div style="${this.cssify({
-        ...outlineStyles,
-        ...borderStyles,
-      })}">
-      </div>
-    `;
-
-    return `
-      <div
-        class="${isSmallImg ? "small-img-container" : "element-container "}" 
-        style="${this.cssify(containerStyles)}">
-      ${this.isHyperLink(
-        hyperlink,
-        `
-        <div>
-          ${strokeElement}
-          <div style="${this.cssify(borderStyles)}">
-              <img
-                src="${imgUrl}"
-                id="cropped-image-${id}"
-                width="${width}"
-                height="${height}"
-                alt="image"
-                style="
-                  ${this.cssify(imageStyles)};
-                  mso-width-percent: 10000;
-                  mso-height: auto;"
-              />
-          </div>
-        </div>
-        `,
-        elementType
-      )}
-      </div>
-    `;
-  }
-}
-
-export async function convertImgJsonToHtml(json, rootCoordinates) {
-  const generator = new ImageElementGenerator(json, rootCoordinates);
-  return generator.generate();
-}
+  return `<div style="${cssContainerStyle}">
+            <div style="${cssImageContainerStyle}">
+              <img style="${cssImageStyle}"
+                    src="${imgSrc}" />
+            </div>
+            ${getOverlayElement(
+              gradient,
+              imageOverlayStyle,
+              overlayFill,
+              alpha
+            )}
+            <div style="${cssImageStrokeStyle}"></div>
+          </div>`;
+};
